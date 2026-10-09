@@ -2404,7 +2404,7 @@ export default function CartPage() {
 
                 </div>
 
-                {items.map((item) => {
+                {items.map((item, index) => {
 
                   const itemTotal =
                     item.price *
@@ -2421,7 +2421,7 @@ export default function CartPage() {
                           ? "removing"
                           : ""
                       }`}
-                      key={item.productId}
+                      key={`${item.productId}-${index}`}
                     >
 
                       {/* =========================================
