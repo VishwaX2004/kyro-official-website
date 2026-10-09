@@ -137,6 +137,31 @@ export async function POST(request: Request) {
     const db = client.db("kyro");
     console.log("[ORDER POST] ✓ Selected database 'kyro'");
 
+    // Generate order ID in format MM-DD-ID001
+    const now = new Date();
+    const month = String(now.getMonth() + 1).padStart(2, "0");
+    const day = String(now.getDate()).padStart(2, "0");
+    const datePrefix = `${month}-${day}`;
+
+    // Count orders created today to get sequential number
+    const startOfDay = new Date(now);
+    startOfDay.setHours(0, 0, 0, 0);
+    const endOfDay = new Date(now);
+    endOfDay.setHours(23, 59, 59, 999);
+
+    const todayOrderCount = await db
+      .collection("orders")
+      .countDocuments({
+        createdAt: {
+          $gte: startOfDay,
+          $lte: endOfDay,
+        },
+      });
+
+    const sequenceNum = String(todayOrderCount + 1).padStart(3, "0");
+    const displayOrderId = `${datePrefix}-ID${sequenceNum}`;
+    console.log(`[ORDER POST] Generated order ID: ${displayOrderId}`);
+
     const orderData = {
       userId: session.userId,
       customerName: session.username,
@@ -144,6 +169,7 @@ export async function POST(request: Request) {
       shipping,
       total,
       status: "pending",
+      displayOrderId,
       createdAt: new Date(),
       updatedAt: new Date(),
     };
@@ -201,7 +227,7 @@ export async function POST(request: Request) {
     return NextResponse.json(
       {
         message: "Order placed successfully.",
-        orderId: result.insertedId.toString(),
+        orderId: displayOrderId,
       },
       { status: 201 }
     );

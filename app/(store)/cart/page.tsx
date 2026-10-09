@@ -224,9 +224,7 @@ export default function CartPage() {
       }
 
       const shortId =
-        data.orderId
-          ?.slice(-6)
-          .toUpperCase() ?? "";
+        data.orderId ?? "";
 
       const successMsg =
         `Order ${shortId} confirmed. ` +

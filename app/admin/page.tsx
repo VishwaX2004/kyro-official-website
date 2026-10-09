@@ -101,27 +101,50 @@ const navItems: {
   label: string;
   icon: ReactNode;
 }[] = [
-  {
-    id: "overview",
-    label: "Overview",
-    icon: icons.overview,
-  },
-  {
-    id: "users",
-    label: "Customers",
-    icon: icons.users,
-  },
-  {
-    id: "products",
-    label: "Fragrances",
-    icon: icons.products,
-  },
-  {
-    id: "orders",
-    label: "Orders",
-    icon: icons.orders,
-  },
-];
+    {
+      id: "overview",
+      label: "Overview",
+      icon: icons.overview,
+    },
+    {
+      id: "users",
+      label: "Customers",
+      icon: icons.users,
+    },
+    {
+      id: "products",
+      label: "Fragrances",
+      icon: icons.products,
+    },
+    {
+      id: "orders",
+      label: "Orders",
+      icon: icons.orders,
+    },
+  ];
+
+/* =========================================================
+   ORDER STATUS CONFIG
+========================================================= */
+
+const ORDER_STATUSES = [
+  "pending",
+  "processing",
+  "paid",
+  "shipped",
+  "delivered",
+  "completed",
+  "cancelled",
+] as const;
+
+// Steps shown in the order progress tracker.
+const ORDER_STEPS = [
+  { id: "pending", label: "Placed" },
+  { id: "processing", label: "Processing" },
+  { id: "paid", label: "Paid" },
+  { id: "shipped", label: "Shipped" },
+  { id: "delivered", label: "Delivered" },
+] as const;
 
 /* =========================================================
    EMPTY FORMS
@@ -175,13 +198,6 @@ const emptyForms = {
     isBestSeller: "false",
     isActive: "true",
   },
-
-  orders: {
-    customer: "",
-    items: "1",
-    total: "",
-    status: "pending",
-  },
 };
 
 /* =========================================================
@@ -205,6 +221,11 @@ export default function AdminPage() {
 
   const [editing, setEditing] = useState<RecordItem | null>(null);
 
+  // Order currently opened in the detail drawer
+  const [viewingOrder, setViewingOrder] = useState<RecordItem | null>(null);
+
+  const [statusSaving, setStatusSaving] = useState(false);
+
   const [query, setQuery] = useState("");
 
   const [notice, setNotice] = useState("");
@@ -217,8 +238,8 @@ export default function AdminPage() {
 
   const collection: CollectionResource | null =
     resource === "users" ||
-    resource === "products" ||
-    resource === "orders"
+      resource === "products" ||
+      resource === "orders"
       ? resource
       : null;
 
@@ -325,6 +346,7 @@ export default function AdminPage() {
     setQuery("");
     setShowForm(false);
     setEditing(null);
+    setViewingOrder(null);
   }, [resource, collection, loadData]);
 
   /* =====================================================
@@ -351,7 +373,7 @@ export default function AdminPage() {
   }
 
   /* =====================================================
-     SAVE RECORD
+     SAVE RECORD (customers + fragrances)
   ===================================================== */
 
   async function saveRecord(
@@ -359,7 +381,8 @@ export default function AdminPage() {
   ) {
     event.preventDefault();
 
-    if (!collection) {
+    // Orders are managed from the order detail drawer.
+    if (!collection || collection === "orders") {
       return;
     }
 
@@ -406,25 +429,17 @@ export default function AdminPage() {
       /* 5ml */
 
       if (formData.get("decant5Enabled") === "on") {
-        const labelledPrice = getNumber(
-          "decant5LabelledPrice"
-        );
-
+        const labelledPrice = getNumber("decant5LabelledPrice");
         const price = getNumber("decant5Price");
-
         const stock = getNumber("decant5Stock");
 
         if (price <= 0) {
-          setNotice(
-            "Please enter a valid 5ml selling price."
-          );
+          setNotice("Please enter a valid 5ml selling price.");
           return;
         }
 
         if (labelledPrice <= 0) {
-          setNotice(
-            "Please enter a valid 5ml labelled price."
-          );
+          setNotice("Please enter a valid 5ml labelled price.");
           return;
         }
 
@@ -447,25 +462,17 @@ export default function AdminPage() {
       /* 10ml */
 
       if (formData.get("decant10Enabled") === "on") {
-        const labelledPrice = getNumber(
-          "decant10LabelledPrice"
-        );
-
+        const labelledPrice = getNumber("decant10LabelledPrice");
         const price = getNumber("decant10Price");
-
         const stock = getNumber("decant10Stock");
 
         if (price <= 0) {
-          setNotice(
-            "Please enter a valid 10ml selling price."
-          );
+          setNotice("Please enter a valid 10ml selling price.");
           return;
         }
 
         if (labelledPrice <= 0) {
-          setNotice(
-            "Please enter a valid 10ml labelled price."
-          );
+          setNotice("Please enter a valid 10ml labelled price.");
           return;
         }
 
@@ -495,23 +502,17 @@ export default function AdminPage() {
       }
 
       if (!getString("brand")) {
-        setNotice(
-          "Please enter the perfume brand."
-        );
+        setNotice("Please enter the perfume brand.");
         return;
       }
 
       if (images.length === 0) {
-        setNotice(
-          "Please upload at least one perfume image."
-        );
+        setNotice("Please upload at least one perfume image.");
         return;
       }
 
       if (decants.length === 0) {
-        setNotice(
-          "Select at least one decant size: 5ml or 10ml."
-        );
+        setNotice("Select at least one decant size: 5ml or 10ml.");
         return;
       }
 
@@ -519,17 +520,13 @@ export default function AdminPage() {
          EXISTING PRODUCT DATA
       ------------------------------------------------ */
 
-      const existingRating = editing
-        ? Number(editing.rating ?? 0)
-        : 0;
+      const existingRating = editing ? Number(editing.rating ?? 0) : 0;
 
       const existingReviewCount = editing
         ? Number(editing.reviewCount ?? 0)
         : 0;
 
-      const createdAt =
-        editing?.createdAt ??
-        new Date().toISOString();
+      const createdAt = editing?.createdAt ?? new Date().toISOString();
 
       /* -----------------------------------------------
          EXACT PRODUCT STRUCTURE
@@ -538,9 +535,7 @@ export default function AdminPage() {
       payload = {
         name: getString("name"),
 
-        slug: createSlug(
-          getString("name")
-        ),
+        slug: createSlug(getString("name")),
 
         brand: getString("brand"),
 
@@ -548,11 +543,9 @@ export default function AdminPage() {
 
         type: getString("type"),
 
-        description:
-          getString("description"),
+        description: getString("description"),
 
-        shortDescription:
-          getString("shortDescription"),
+        shortDescription: getString("shortDescription"),
 
         images,
 
@@ -561,42 +554,30 @@ export default function AdminPage() {
         fragrance: {
           gender: getString("gender"),
 
-          concentration:
-            getString("concentration"),
+          concentration: getString("concentration"),
 
           season: getList("season"),
 
           occasion: getList("occasion"),
 
-          longevity:
-            getString("longevity"),
+          longevity: getString("longevity"),
 
-          sillage:
-            getString("sillage"),
+          sillage: getString("sillage"),
         },
 
         notes: {
-          top: splitNotes(
-            getString("topNotes")
-          ),
+          top: splitNotes(getString("topNotes")),
 
-          middle: splitNotes(
-            getString("middleNotes")
-          ),
+          middle: splitNotes(getString("middleNotes")),
 
-          base: splitNotes(
-            getString("baseNotes")
-          ),
+          base: splitNotes(getString("baseNotes")),
         },
 
-        isFeatured:
-          formData.get("isFeatured") === "on",
+        isFeatured: formData.get("isFeatured") === "on",
 
-        isBestSeller:
-          formData.get("isBestSeller") === "on",
+        isBestSeller: formData.get("isBestSeller") === "on",
 
-        isActive:
-          formData.get("isActive") === "on",
+        isActive: formData.get("isActive") === "on",
 
         rating: existingRating,
 
@@ -604,10 +585,9 @@ export default function AdminPage() {
 
         createdAt,
 
-        updatedAt:
-          new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
       };
-    } else if (collection === "users") {
+    } else {
       /* =================================================
          USER PAYLOAD
          Exact MongoDB user structure
@@ -616,10 +596,9 @@ export default function AdminPage() {
       const getUserString = (name: string) =>
         String(formData.get(name) ?? "").trim();
 
-      const existingCreatedAt =
-        editing?.createdAt
-          ? String(editing.createdAt)
-          : new Date().toISOString();
+      const existingCreatedAt = editing?.createdAt
+        ? String(editing.createdAt)
+        : new Date().toISOString();
 
       const password = getUserString("password");
 
@@ -663,32 +642,11 @@ export default function AdminPage() {
         setNotice("Password must contain at least 6 characters.");
         return;
       }
-    } else if (collection === "orders") {
-      /* =================================================
-         ORDERS — only status is editable via admin UI
-      ================================================= */
-
-      const statusValue = formData.get("status");
-      if (!statusValue) {
-        setNotice("Please select a status.");
-        return;
-      }
-
-      payload = { status: String(statusValue) };
-
-    } else {
-      /* =================================================
-         USERS
-      ================================================= */
-
-      payload = Object.fromEntries(
-        formData.entries()
-      );
     }
 
     /* ===================================================
        SEND REQUEST
-    ================================================= */
+    =================================================== */
 
     try {
       const url = editing
@@ -699,8 +657,7 @@ export default function AdminPage() {
         method: editing ? "PATCH" : "POST",
 
         headers: {
-          "Content-Type":
-            "application/json",
+          "Content-Type": "application/json",
         },
 
         body: JSON.stringify(payload),
@@ -711,27 +668,19 @@ export default function AdminPage() {
       };
 
       if (!response.ok) {
-        throw new Error(
-          data.message ||
-            "Unable to save record."
-        );
+        throw new Error(data.message || "Unable to save record.");
       }
 
-      setNotice(
-        collection === "orders"
-          ? `Order status updated to "${payload.status}".`
-          : editing
-          ? "Fragrance updated successfully."
-          : "Fragrance added to the collection."
-      );
+      const label = collection === "users" ? "Customer" : "Fragrance";
 
-      toast.success(
-        collection === "orders"
-          ? `Order status updated to "${payload.status}".`
-          : editing
-          ? "Fragrance updated successfully."
-          : "Fragrance added to the collection."
-      );
+      const successMessage = editing
+        ? `${label} updated successfully.`
+        : collection === "users"
+          ? "Customer added successfully."
+          : "Fragrance added to the collection.";
+
+      setNotice(successMessage);
+      toast.success(successMessage);
 
       setShowForm(false);
 
@@ -742,22 +691,61 @@ export default function AdminPage() {
       if (!editing) {
         setCounts((current) => ({
           ...current,
-          [collection]:
-            current[collection] + 1,
+          [collection]: current[collection] + 1,
         }));
       }
     } catch (error) {
       setNotice(
-        error instanceof Error
-          ? error.message
-          : "Unable to save record."
+        error instanceof Error ? error.message : "Unable to save record."
       );
       toast.error(
-        error instanceof Error
-          ? error.message
-          : "Unable to save record.",
+        error instanceof Error ? error.message : "Unable to save record.",
         { duration: 6000 }
       );
+    }
+  }
+
+  /* =====================================================
+     UPDATE ORDER STATUS (from the order drawer)
+  ===================================================== */
+
+  async function updateOrderStatus(order: RecordItem, status: string) {
+    setStatusSaving(true);
+
+    try {
+      const response = await fetch(`/api/admin/orders/${order._id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status }),
+      });
+
+      const data = (await response.json().catch(() => ({}))) as {
+        message?: string;
+      };
+
+      if (!response.ok) {
+        throw new Error(data.message || "Unable to update order status.");
+      }
+
+      const message = `Order status updated to "${status}".`;
+
+      setNotice(message);
+      toast.success(message);
+
+      // Keep the drawer open and reflect the new status immediately.
+      setViewingOrder({ ...order, status });
+
+      await loadData("orders");
+    } catch (error) {
+      const message =
+        error instanceof Error
+          ? error.message
+          : "Unable to update order status.";
+
+      setNotice(message);
+      toast.error(message, { duration: 6000 });
+    } finally {
+      setStatusSaving(false);
     }
   }
 
@@ -770,41 +758,31 @@ export default function AdminPage() {
       return;
     }
 
-    const confirmed = window.confirm(
-      "Remove this record from Kyro?"
-    );
+    const confirmed = window.confirm("Remove this record from Kyro?");
 
     if (!confirmed) {
       return;
     }
 
     try {
-      const response = await fetch(
-        `/api/admin/${collection}/${id}`,
-        {
-          method: "DELETE",
-        }
-      );
+      const response = await fetch(`/api/admin/${collection}/${id}`, {
+        method: "DELETE",
+      });
 
       if (!response.ok) {
-        throw new Error(
-          "Unable to remove that record."
-        );
+        throw new Error("Unable to remove that record.");
       }
 
       setRecords((current) =>
-        current.filter(
-          (record) => record._id !== id
-        )
+        current.filter((record) => record._id !== id)
       );
 
       setCounts((current) => ({
         ...current,
-        [collection]: Math.max(
-          0,
-          current[collection] - 1
-        ),
+        [collection]: Math.max(0, current[collection] - 1),
       }));
+
+      setViewingOrder((current) => (current?._id === id ? null : current));
 
       setNotice("Record removed.");
       toast.success("Record removed.");
@@ -827,9 +805,7 @@ export default function AdminPage() {
      PROFILE
   ===================================================== */
 
-  async function saveProfile(
-    event: FormEvent<HTMLFormElement>
-  ) {
+  async function saveProfile(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const form = event.currentTarget;
     const formData = new FormData(form);
@@ -858,14 +834,22 @@ export default function AdminPage() {
           ...(next.password ? { password: next.password } : {}),
         }),
       });
-      const data = (await response.json().catch(() => ({}))) as { message?: string };
+      const data = (await response.json().catch(() => ({}))) as {
+        message?: string;
+      };
       if (!response.ok) throw new Error(data.message || "Unable to save profile.");
-      setProfile({ name: next.name, email: next.email, imageUrl: next.imageUrl });
+      setProfile({
+        name: next.name,
+        email: next.email,
+        imageUrl: next.imageUrl,
+      });
       form.reset();
       setNotice("Admin profile updated successfully.");
       toast.success("Admin profile updated successfully.");
     } catch (error) {
-      setNotice(error instanceof Error ? error.message : "Unable to save profile.");
+      setNotice(
+        error instanceof Error ? error.message : "Unable to save profile."
+      );
       toast.error(
         error instanceof Error ? error.message : "Unable to save profile.",
         { duration: 6000 }
@@ -873,10 +857,7 @@ export default function AdminPage() {
     }
   }
 
-  const titles: Record<
-    CollectionResource,
-    string
-  > = {
+  const titles: Record<CollectionResource, string> = {
     users: "Customers",
     products: "Fragrances",
     orders: "Orders",
@@ -884,13 +865,11 @@ export default function AdminPage() {
 
   return (
     <main className="admin-shell kyro-admin">
-
       {/* =================================================
           SIDEBAR
       ================================================= */}
 
       <aside className="admin-sidebar">
-
         <div className="sidebar-top">
           <Link
             className="admin-brand"
@@ -908,107 +887,60 @@ export default function AdminPage() {
           </Link>
         </div>
 
-        <span className="admin-section-label">
-          Workspace
-        </span>
+        <span className="admin-section-label">Workspace</span>
 
-        <nav
-          className="admin-nav"
-          aria-label="Workspace"
-        >
+        <nav className="admin-nav" aria-label="Workspace">
           {navItems.map((item) => (
             <button
               key={item.id}
               type="button"
-              className={
-                resource === item.id
-                  ? "active"
-                  : ""
-              }
-              onClick={() =>
-                selectResource(item.id)
-              }
+              className={resource === item.id ? "active" : ""}
+              onClick={() => selectResource(item.id)}
               aria-label={item.label}
-              aria-current={
-                resource === item.id
-                  ? "page"
-                  : undefined
-              }
+              aria-current={resource === item.id ? "page" : undefined}
             >
-              <span className="nav-icon">
-                {item.icon}
-              </span>
+              <span className="nav-icon">{item.icon}</span>
 
-              <span className="nav-label">
-                {item.label}
-              </span>
+              <span className="nav-label">{item.label}</span>
             </button>
           ))}
         </nav>
 
         <div className="admin-sidebar-bottom">
-
           <button
             type="button"
-            className={
-              resource === "settings"
-                ? "active"
-                : ""
-            }
-            onClick={() =>
-              selectResource("settings")
-            }
+            className={resource === "settings" ? "active" : ""}
+            onClick={() => selectResource("settings")}
             aria-label="Settings"
           >
-            <span className="nav-icon">
-              {icons.settings}
-            </span>
+            <span className="nav-icon">{icons.settings}</span>
 
-            <span className="nav-label">
-              Settings
-            </span>
+            <span className="nav-label">Settings</span>
           </button>
 
-          <Link
-            href="/"
-            aria-label="Go back to the Kyro Parfums homepage"
-          >
-            <span className="nav-icon">
-              {icons.back}
-            </span>
+          <Link href="/" aria-label="Go back to the Kyro Parfums homepage">
+            <span className="nav-icon">{icons.back}</span>
 
-            <span className="nav-label">
-              Back to homepage
-            </span>
+            <span className="nav-label">Back to homepage</span>
           </Link>
-
         </div>
 
         <div className="admin-user-mini">
-
           <button
             type="button"
             className="avatar"
-            onClick={() =>
-              selectResource("settings")
-            }
+            onClick={() => selectResource("settings")}
             aria-label="Open profile settings"
           >
             {profile.name.slice(0, 1)}
           </button>
 
           <span className="mini-user-info">
-            <strong>
-              {profile.name}
-            </strong>
+            <strong>{profile.name}</strong>
 
-            <small>
-              Administrator
-            </small>
+            <small>Administrator</small>
           </span>
-
         </div>
-
       </aside>
 
       {/* =================================================
@@ -1016,39 +948,32 @@ export default function AdminPage() {
       ================================================= */}
 
       <section className="admin-content">
-
         <header className="admin-header">
-
           <div className="header-copy">
-
-            <p className="admin-kicker">
-              KYRO PARFUMS / HOUSE CONTROL
-            </p>
+            <p className="admin-kicker">KYRO PARFUMS / HOUSE CONTROL</p>
 
             <h1>
               {resource === "overview"
                 ? "Shape the next signature."
                 : resource === "settings"
-                ? "Make the house yours."
-                : titles[resource]}
+                  ? "Make the house yours."
+                  : titles[resource]}
             </h1>
 
             <p className="header-subtitle">
               {resource === "overview"
                 ? "A quiet space to manage the fragrance house."
                 : resource === "products"
-                ? "Curate the collection with intention."
-                : resource === "users"
-                ? "Know the collectors behind Kyro."
-                : resource === "orders"
-                ? "Keep every fragrance journey moving."
-                : "Personalise your Kyro workspace."}
+                  ? "Curate the collection with intention."
+                  : resource === "users"
+                    ? "Know the collectors behind Kyro."
+                    : resource === "orders"
+                      ? "Select an order to see its items, delivery details and progress."
+                      : "Personalise your Kyro workspace."}
             </p>
-
           </div>
 
           <div className="admin-header-actions">
-
             <span className="live-pill">
               <i />
               Storefront live
@@ -1057,11 +982,7 @@ export default function AdminPage() {
             <button
               type="button"
               className="admin-icon-button"
-              onClick={() =>
-                setNotice(
-                  "Your house is up to date."
-                )
-              }
+              onClick={() => setNotice("Your house is up to date.")}
               aria-label="Check store status"
             >
               ♢
@@ -1070,38 +991,25 @@ export default function AdminPage() {
             <button
               type="button"
               className="admin-avatar"
-              onClick={() =>
-                selectResource("settings")
-              }
+              onClick={() => selectResource("settings")}
               aria-label="Open settings"
             >
               {profile.name.slice(0, 1)}
             </button>
-
           </div>
-
         </header>
 
         {/* NOTICE */}
 
         {notice && (
-          <div
-            className="admin-notice"
-            role="status"
-          >
-            <span className="notice-symbol">
-              ✓
-            </span>
+          <div className="admin-notice" role="status">
+            <span className="notice-symbol">✓</span>
 
-            <span>
-              {notice}
-            </span>
+            <span>{notice}</span>
 
             <button
               type="button"
-              onClick={() =>
-                setNotice("")
-              }
+              onClick={() => setNotice("")}
               aria-label="Dismiss notification"
             >
               ×
@@ -1112,25 +1020,20 @@ export default function AdminPage() {
         {/* OVERVIEW */}
 
         {resource === "overview" && (
-          <Overview
-            counts={counts}
-            onNavigate={selectResource}
-          />
+          <Overview counts={counts} onNavigate={selectResource} />
         )}
 
         {/* SETTINGS */}
 
         {resource === "settings" && (
-          <Settings
-            profile={profile}
-            onSave={saveProfile}
-          />
+          <Settings profile={profile} onSave={saveProfile} />
         )}
 
         {/* COLLECTION */}
 
         {collection && (
           <Collection
+            key={collection}
             resource={collection}
             records={visibleRecords}
             query={query}
@@ -1144,13 +1047,14 @@ export default function AdminPage() {
               setEditing(record);
               setShowForm(true);
             }}
+            onView={(record) => setViewingOrder(record)}
             onDelete={removeRecord}
           />
         )}
 
-        {/* MODAL */}
+        {/* MODAL (customers + fragrances) */}
 
-        {showForm && collection && (
+        {showForm && (collection === "users" || collection === "products") && (
           <RecordModal
             collection={collection}
             editing={editing}
@@ -1162,6 +1066,17 @@ export default function AdminPage() {
           />
         )}
 
+        {/* ORDER DETAIL DRAWER */}
+
+        {collection === "orders" && viewingOrder && (
+          <OrderDrawer
+            key={viewingOrder._id}
+            order={viewingOrder}
+            saving={statusSaving}
+            onClose={() => setViewingOrder(null)}
+            onSaveStatus={(status) => updateOrderStatus(viewingOrder, status)}
+          />
+        )}
       </section>
 
       {/* =================================================
@@ -1921,12 +1836,14 @@ body{
 }
 
 .order-status.paid,
-.order-status.completed{
+.order-status.completed,
+.order-status.delivered{
   background:rgba(79,121,72,.14);
   color:#3c6a35;
 }
 
-.order-status.shipped{
+.order-status.shipped,
+.order-status.processing{
   background:rgba(52,98,150,.12);
   color:#2c5584;
 }
@@ -2837,6 +2754,124 @@ body{
 .size-empty { display: inline-flex; align-items: center; min-height: 28px; padding: 0 12px; border: 1px dashed rgba(23,23,23,.2); border-radius: 999px; color: #8a847a; font-size: 12px; font-weight: 600; }
 .stock.warn { background: rgba(170,137,83,.18); color: #7a5518; }
 .stock.out { background: rgba(164,76,54,.12); color: #9a3f2a; }
+
+/* =========================================================
+   ORDERS — filter chips, clickable rows
+========================================================= */
+.order-filters { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 16px; }
+.order-chip { display: inline-flex; align-items: center; gap: 8px; min-height: 38px; padding: 0 14px; border: 1px solid var(--kyro-line); border-radius: 999px; background: #fffefa; color: #292524; font-size: 13px; font-weight: 700; text-transform: capitalize; cursor: pointer; transition: background .18s, border-color .18s, color .18s; }
+.order-chip:hover { border-color: #cbb58d; background: #f8f4eb; }
+.order-chip b { display: inline-flex; align-items: center; justify-content: center; min-width: 22px; height: 22px; padding: 0 6px; border-radius: 999px; background: rgba(23,23,23,.07); font-size: 11px; font-weight: 800; }
+.order-chip.active { border-color: #171717; background: #171717; color: #fffefa; }
+.order-chip.active b { background: rgba(208,173,112,.22); color: #d0ad70; }
+.orders-table { min-width: 860px; }
+.orders-table tbody tr.order-row { cursor: pointer; }
+.orders-table tbody tr.order-row:focus-visible { outline: 2px solid #9a7945; outline-offset: -2px; background: #fbf8f0; }
+.order-id-cell { display: flex; flex-direction: column; gap: 3px; }
+.order-id-cell strong { font-variant-numeric: tabular-nums; letter-spacing: .02em; }
+.order-id-cell small { margin: 0; }
+.order-customer strong { display: block; font-size: 14px; font-weight: 700; }
+.order-customer small { margin-top: 3px; }
+.order-row-hint { display: inline-flex; align-items: center; gap: 6px; color: #8f6d36; font-size: 12px; font-weight: 700; opacity: 0; transition: opacity .18s; }
+.order-row:hover .order-row-hint, .order-row:focus-visible .order-row-hint { opacity: 1; }
+.order-row-hint svg { width: 15px; height: 15px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+
+/* =========================================================
+   ORDER DETAIL DRAWER
+========================================================= */
+.drawer-backdrop { position: fixed; inset: 0; z-index: 220; display: flex; justify-content: flex-end; background: rgba(15,14,13,.55); backdrop-filter: blur(6px); animation: kyroFade .22s ease; }
+.order-drawer { display: flex; flex-direction: column; width: min(580px, 100%); height: 100%; background: var(--kyro-ivory); box-shadow: -30px 0 90px rgba(0,0,0,.28); animation: kyroSlide .3s cubic-bezier(.2,.8,.2,1); }
+@keyframes kyroFade { from { opacity: 0; } to { opacity: 1; } }
+@keyframes kyroSlide { from { transform: translateX(40px); opacity: .4; } to { transform: none; opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .drawer-backdrop, .order-drawer { animation: none; } }
+
+.drawer-head { position: relative; flex: 0 0 auto; padding: 24px 28px 20px; background: #171717; color: #fffefa; }
+.drawer-close { position: absolute; top: 18px; right: 20px; display: flex; align-items: center; justify-content: center; width: 36px; height: 36px; border: 1px solid rgba(255,255,255,.22); border-radius: 50%; background: transparent; color: #fffefa; font-size: 20px; cursor: pointer; transition: background .18s; }
+.drawer-close:hover { background: rgba(255,255,255,.12); }
+.drawer-head .drawer-kicker { color: #d0ad70; font-size: 12px; font-weight: 700; }
+.drawer-title-row { display: flex; align-items: center; flex-wrap: wrap; gap: 12px; margin: 8px 50px 0 0; }
+.drawer-title-row h2 { margin: 0; font-family: Georgia, "Times New Roman", serif; font-size: 32px; font-weight: 400; letter-spacing: -.02em; }
+.drawer-head .order-status { background: rgba(255,255,255,.12); color: #fffefa; }
+.drawer-head .order-status.paid, .drawer-head .order-status.completed, .drawer-head .order-status.delivered { background: rgba(120,190,110,.22); color: #b7e3ae; }
+.drawer-head .order-status.shipped, .drawer-head .order-status.processing { background: rgba(110,160,220,.22); color: #b6d3f5; }
+.drawer-head .order-status.pending { background: rgba(208,173,112,.22); color: #e9cf9d; }
+.drawer-head .order-status.cancelled { background: rgba(220,110,95,.22); color: #f2b3aa; }
+.drawer-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 14px; margin-top: 10px; color: rgba(255,255,255,.7); font-size: 13px; }
+.drawer-copy { display: inline-flex; align-items: center; gap: 6px; padding: 0; border: 0; background: transparent; color: #d0ad70; font-size: 13px; font-weight: 700; cursor: pointer; }
+.drawer-copy:hover { text-decoration: underline; }
+
+.drawer-body { flex: 1 1 auto; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; gap: 14px; padding: 20px 28px 28px; }
+.drawer-card { padding: 20px; border: 1px solid var(--kyro-line); border-radius: 16px; background: #fffefa; }
+.drawer-card h3 { margin: 0 0 14px; font-size: 14px; font-weight: 800; color: #171717; }
+.drawer-stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+.drawer-stat { padding: 14px 16px; border: 1px solid var(--kyro-line); border-radius: 14px; background: #fffefa; }
+.drawer-stat span { display: block; color: #625d55; font-size: 12px; font-weight: 700; }
+.drawer-stat strong { display: block; margin-top: 6px; font-size: 18px; font-weight: 800; letter-spacing: -.01em; overflow-wrap: anywhere; }
+.drawer-stat.total strong { font-family: Georgia, serif; font-weight: 400; font-size: 22px; }
+
+/* progress tracker */
+.order-steps { display: grid; grid-template-columns: repeat(5, 1fr); margin: 0; padding: 0; list-style: none; }
+.order-step { position: relative; display: flex; flex-direction: column; align-items: center; gap: 8px; text-align: center; color: #8a847a; font-size: 12px; font-weight: 700; }
+.order-step::before { content: ""; position: absolute; top: 13px; right: 50%; width: 100%; height: 2px; background: #e4ded2; }
+.order-step:first-child::before { display: none; }
+.order-step i { position: relative; z-index: 1; display: flex; align-items: center; justify-content: center; width: 28px; height: 28px; border: 2px solid #e4ded2; border-radius: 50%; background: #fffefa; font-size: 12px; font-style: normal; font-weight: 800; color: transparent; }
+.order-step.done { color: #292524; }
+.order-step.done::before { background: #171717; }
+.order-step.done i { border-color: #171717; background: #171717; color: #d0ad70; }
+.order-step.current { color: #171717; }
+.order-step.current i { border-color: #8f6d36; background: #fffefa; box-shadow: 0 0 0 4px rgba(143,109,54,.16); color: #8f6d36; }
+.order-step.current i::after { content: ""; width: 8px; height: 8px; border-radius: 50%; background: #8f6d36; }
+.order-cancelled { display: flex; align-items: center; gap: 10px; padding: 12px 14px; border: 1px solid rgba(160,66,50,.3); border-radius: 12px; background: rgba(160,66,50,.08); color: #9a3a2c; font-size: 13px; font-weight: 700; }
+
+/* customer */
+.drawer-info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px 20px; margin: 0; }
+.drawer-info-grid div { min-width: 0; }
+.drawer-info-grid dt { margin: 0 0 4px; color: #625d55; font-size: 12px; font-weight: 700; }
+.drawer-info-grid dd { margin: 0; color: #171717; font-size: 14px; font-weight: 600; line-height: 1.5; overflow-wrap: anywhere; }
+.drawer-info-grid .wide { grid-column: 1 / -1; }
+.drawer-contact { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 16px; padding-top: 16px; border-top: 1px solid rgba(23,23,23,.08); }
+.drawer-contact a { display: inline-flex; align-items: center; min-height: 36px; padding: 0 14px; border: 1px solid #e7e1d6; border-radius: 999px; background: #fff; color: #292524; font-size: 13px; font-weight: 700; text-decoration: none; transition: background .18s, border-color .18s; }
+.drawer-contact a:hover { background: #f8f4eb; border-color: #cbb58d; }
+
+/* items */
+.drawer-items { display: flex; flex-direction: column; gap: 10px; margin: 0; padding: 0; list-style: none; }
+.drawer-item { display: grid; grid-template-columns: 56px minmax(0, 1fr) auto; align-items: center; gap: 14px; padding: 10px; border: 1px solid rgba(23,23,23,.08); border-radius: 14px; background: #fff; }
+.drawer-item-thumb { display: flex; align-items: center; justify-content: center; width: 56px; height: 64px; overflow: hidden; border-radius: 10px; background: radial-gradient(circle at 50% 45%, #fff, #f4f0e8 60%, #e9e3d7); color: #aa8953; font-family: Georgia, serif; font-size: 20px; }
+.drawer-item-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.drawer-item-name { margin: 0; font-size: 15px; font-weight: 750; line-height: 1.3; overflow-wrap: anywhere; }
+.drawer-item-meta { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+.drawer-item-meta span { display: inline-flex; align-items: center; min-height: 22px; padding: 0 8px; border-radius: 6px; background: rgba(143,109,54,.1); color: #6f5226; font-size: 12px; font-weight: 700; }
+.drawer-item-total { text-align: right; font-size: 14px; font-weight: 800; white-space: nowrap; }
+.drawer-item-total small { display: block; margin-top: 3px; color: #625d55; font-size: 12px; font-weight: 600; }
+
+.drawer-summary { display: flex; flex-direction: column; gap: 10px; margin-top: 16px; padding-top: 16px; border-top: 1px dashed rgba(23,23,23,.18); font-size: 14px; }
+.drawer-summary div { display: flex; justify-content: space-between; gap: 12px; color: #4b463f; }
+.drawer-summary .grand { align-items: baseline; margin-top: 4px; padding-top: 12px; border-top: 1px solid rgba(23,23,23,.12); color: #171717; font-weight: 800; }
+.drawer-summary .grand strong { font-family: Georgia, serif; font-size: 24px; font-weight: 400; }
+.drawer-empty { margin: 0; padding: 18px; border: 1px dashed rgba(23,23,23,.2); border-radius: 12px; color: #625d55; font-size: 13px; text-align: center; }
+
+/* sticky status footer */
+.drawer-foot { flex: 0 0 auto; display: flex; align-items: flex-end; gap: 12px; padding: 16px 28px; border-top: 1px solid var(--kyro-line); background: #fffefa; box-shadow: 0 -10px 30px rgba(23,23,23,.05); }
+.drawer-foot label { flex: 1; display: flex; flex-direction: column; gap: 6px; color: #292524; font-size: 12px; font-weight: 750; }
+.drawer-foot select { width: 100%; min-height: 46px; padding: 0 12px; border: 1px solid #d9d4ca; border-radius: 10px; background: #fff; color: #171717; font: inherit; font-size: 15px; text-transform: capitalize; }
+.drawer-foot select:focus { outline: none; border-color: #9a7945; box-shadow: 0 0 0 3px rgba(154,121,69,.13); }
+.drawer-foot .primary-action { flex: 0 0 auto; }
+
+@media (max-width: 760px) {
+  .order-drawer { width: 100%; }
+  .drawer-head { padding: 20px 18px 16px; }
+  .drawer-title-row h2 { font-size: 26px; }
+  .drawer-body { padding: 16px 14px 20px; }
+  .drawer-stats { grid-template-columns: 1fr 1fr; }
+  .drawer-stat.total { grid-column: 1 / -1; }
+  .drawer-info-grid { grid-template-columns: 1fr; }
+  .drawer-item { grid-template-columns: 48px minmax(0, 1fr); }
+  .drawer-item-thumb { width: 48px; height: 56px; }
+  .drawer-item-total { grid-column: 2; text-align: left; }
+  .drawer-foot { flex-direction: column; align-items: stretch; padding: 14px; }
+  .order-steps { font-size: 11px; }
+  .order-row-hint { display: none; }
+}
           `,
         }}
       />
@@ -2884,28 +2919,19 @@ function Overview({
 
   return (
     <div className="overview">
-
       <div className="welcome-card">
-
         <div>
-          <span className="admin-kicker">
-            KYRO / HOUSE NOTE
-          </span>
+          <span className="admin-kicker">KYRO / HOUSE NOTE</span>
 
-          <h2>
-            Your fragrance house is ready for its next chapter.
-          </h2>
+          <h2>Your fragrance house is ready for its next chapter.</h2>
 
           <p>
-            A quick read on the people, perfumes,
-            and parcels moving through Kyro today.
+            A quick read on the people, perfumes, and parcels moving through
+            Kyro today.
           </p>
         </div>
 
-        <div
-          className="welcome-bottle"
-          aria-hidden="true"
-        >
+        <div className="welcome-bottle" aria-hidden="true">
           <div />
 
           <span>
@@ -2914,128 +2940,68 @@ function Overview({
             <small>NO. 01</small>
           </span>
         </div>
-
       </div>
 
       <div className="metric-grid">
-
         {metrics.map((metric) => (
           <button
             key={metric.id}
             type="button"
             className="metric-card"
-            onClick={() =>
-              onNavigate(metric.id)
-            }
+            onClick={() => onNavigate(metric.id)}
           >
-            <span>
-              {metric.label}
-            </span>
+            <span>{metric.label}</span>
 
-            <strong>
-              {metric.value}
-            </strong>
+            <strong>{metric.value}</strong>
 
-            <small>
-              {metric.trend}
-            </small>
+            <small>{metric.trend}</small>
 
             <i>→</i>
           </button>
         ))}
-
       </div>
 
       <div className="overview-grid">
-
         <div className="panel-card">
-
           <div className="panel-heading">
-
             <div>
-              <span className="admin-kicker">
-                YOUR NEXT MOVES
-              </span>
+              <span className="admin-kicker">YOUR NEXT MOVES</span>
 
-              <h3>
-                Curate with intention
-              </h3>
+              <h3>Curate with intention</h3>
             </div>
 
             <span>✦</span>
-
           </div>
 
           <div className="quick-grid">
-
-            <button
-              type="button"
-              onClick={() =>
-                onNavigate("products")
-              }
-            >
+            <button type="button" onClick={() => onNavigate("products")}>
               <b>+</b>
-              <span>
-                Compose a fragrance
-              </span>
-              <small>
-                Bring a new decant to life
-              </small>
+              <span>Compose a fragrance</span>
+              <small>Bring a new decant to life</small>
             </button>
 
-            <button
-              type="button"
-              onClick={() =>
-                onNavigate("orders")
-              }
-            >
+            <button type="button" onClick={() => onNavigate("orders")}>
               <b>□</b>
-              <span>
-                Guide your parcels
-              </span>
-              <small>
-                Keep every order moving
-              </small>
+              <span>Guide your parcels</span>
+              <small>Keep every order moving</small>
             </button>
 
-            <button
-              type="button"
-              onClick={() =>
-                onNavigate("users")
-              }
-            >
+            <button type="button" onClick={() => onNavigate("users")}>
               <b>♙</b>
-              <span>
-                Meet your collectors
-              </span>
-              <small>
-                Know who wears Kyro
-              </small>
+              <span>Meet your collectors</span>
+              <small>Know who wears Kyro</small>
             </button>
-
           </div>
-
         </div>
 
         <div className="panel-card inspiration-card">
+          <span className="admin-kicker">A HOUSE NOTE</span>
 
-          <span className="admin-kicker">
-            A HOUSE NOTE
-          </span>
+          <p>Scent is the invisible signature we leave on a room.</p>
 
-          <p>
-            Scent is the invisible signature
-            we leave on a room.
-          </p>
-
-          <small>
-            — Kyro Parfums
-          </small>
-
+          <small>— Kyro Parfums</small>
         </div>
-
       </div>
-
     </div>
   );
 }
@@ -3083,8 +3049,7 @@ function SizeCell({ decant }: { decant: DecantInfo | null }) {
     return <span className="size-empty">Not offered</span>;
   }
 
-  const hasDiscount =
-    decant.labelledPrice > decant.price && decant.price > 0;
+  const hasDiscount = decant.labelledPrice > decant.price && decant.price > 0;
 
   const discount = hasDiscount
     ? Math.round((1 - decant.price / decant.labelledPrice) * 100)
@@ -3094,24 +3059,22 @@ function SizeCell({ decant }: { decant: DecantInfo | null }) {
     decant.stock <= 0
       ? "stock out"
       : decant.stock < 5
-      ? "stock warn"
-      : "stock";
+        ? "stock warn"
+        : "stock";
 
   const stockText =
     decant.stock <= 0
       ? "Sold out"
       : decant.stock < 5
-      ? `Only ${decant.stock} left`
-      : `${decant.stock} in stock`;
+        ? `Only ${decant.stock} left`
+        : `${decant.stock} in stock`;
 
   return (
     <div className="size-cell">
       <div className="size-price-row">
         <span className="size-price">{formatRupees(decant.price)}</span>
 
-        {hasDiscount && (
-          <span className="size-discount">-{discount}%</span>
-        )}
+        {hasDiscount && <span className="size-discount">-{discount}%</span>}
       </div>
 
       {hasDiscount && (
@@ -3133,6 +3096,7 @@ function Collection({
   loading,
   onAdd,
   onEdit,
+  onView,
   onDelete,
 }: {
   resource: CollectionResource;
@@ -3142,58 +3106,114 @@ function Collection({
   loading: boolean;
   onAdd: () => void;
   onEdit: (record: RecordItem) => void;
+  onView: (record: RecordItem) => void;
   onDelete: (id: string) => void;
 }) {
-  const columnCount =
-    resource === "users" ? 4 : resource === "products" ? 4 : 5;
+  const [statusFilter, setStatusFilter] = useState<string>("all");
+
+  const isOrders = resource === "orders";
+
+  const columnCount = resource === "users" ? 4 : resource === "products" ? 4 : 5;
+
+  // Per-status counts for the order filter chips
+  const statusCounts = useMemo(() => {
+    const result: Record<string, number> = {};
+
+    if (!isOrders) {
+      return result;
+    }
+
+    for (const record of records) {
+      const status = String(record.status ?? "pending");
+      result[status] = (result[status] ?? 0) + 1;
+    }
+
+    return result;
+  }, [records, isOrders]);
+
+  const rows = useMemo(() => {
+    if (!isOrders || statusFilter === "all") {
+      return records;
+    }
+
+    return records.filter(
+      (record) => String(record.status ?? "pending") === statusFilter
+    );
+  }, [records, isOrders, statusFilter]);
 
   return (
     <div className="collection">
-
       <div className="collection-toolbar">
-
         <div className="search-box">
-
           <span>⌕</span>
 
           <input
             value={query}
             onChange={(event) => setQuery(event.target.value)}
-            placeholder={`Search ${resource}...`}
+            placeholder={
+              isOrders
+                ? "Search by order ID, customer or product..."
+                : `Search ${resource}...`
+            }
             aria-label={`Search ${resource}`}
           />
-
         </div>
 
-        <button
-          type="button"
-          className="primary-action"
-          onClick={onAdd}
-        >
-          + Add{" "}
-          {resource === "products"
-            ? "fragrance"
-            : resource === "users"
-            ? "customer"
-            : "order"}
-        </button>
-
+        {/* Orders are placed by customers, so there is no "add order" action. */}
+        {!isOrders && (
+          <button type="button" className="primary-action" onClick={onAdd}>
+            + Add {resource === "products" ? "fragrance" : "customer"}
+          </button>
+        )}
       </div>
 
+      {/* ORDER STATUS FILTERS */}
+
+      {isOrders && (
+        <div className="order-filters" role="tablist" aria-label="Filter orders by status">
+          <button
+            type="button"
+            role="tab"
+            aria-selected={statusFilter === "all"}
+            className={`order-chip ${statusFilter === "all" ? "active" : ""}`}
+            onClick={() => setStatusFilter("all")}
+          >
+            All
+            <b>{records.length}</b>
+          </button>
+
+          {ORDER_STATUSES.filter((status) => statusCounts[status]).map(
+            (status) => (
+              <button
+                key={status}
+                type="button"
+                role="tab"
+                aria-selected={statusFilter === status}
+                className={`order-chip ${statusFilter === status ? "active" : ""
+                  }`}
+                onClick={() => setStatusFilter(status)}
+              >
+                {status}
+                <b>{statusCounts[status]}</b>
+              </button>
+            )
+          )}
+        </div>
+      )}
+
       <div className="table-card">
-
         <div className="table-scroll">
-
           <table
             className={
-              resource === "products" ? "products-table" : undefined
+              resource === "products"
+                ? "products-table"
+                : isOrders
+                  ? "orders-table"
+                  : undefined
             }
           >
-
             <thead>
-
               <tr>
-
                 {resource === "users" && (
                   <>
                     <th>Customer</th>
@@ -3221,7 +3241,7 @@ function Collection({
                   </>
                 )}
 
-                {resource === "orders" && (
+                {isOrders && (
                   <>
                     <th>Order</th>
                     <th>Customer</th>
@@ -3230,50 +3250,64 @@ function Collection({
                     <th />
                   </>
                 )}
-
               </tr>
-
             </thead>
 
             <tbody>
-
               {loading ? (
                 <tr>
                   <td colSpan={columnCount} className="empty-state">
                     Loading your collection...
                   </td>
                 </tr>
-              ) : records.length === 0 ? (
+              ) : rows.length === 0 ? (
                 <tr>
                   <td colSpan={columnCount} className="empty-state">
-                    No records yet. Add your first one above.
+                    {isOrders
+                      ? statusFilter === "all"
+                        ? "No orders yet. New orders will appear here."
+                        : `No ${statusFilter} orders.`
+                      : "No records yet. Add your first one above."}
                   </td>
                 </tr>
               ) : (
-                records.map((record) => (
-                  <tr key={record._id}>
-
+                rows.map((record) => (
+                  <tr
+                    key={record._id}
+                    className={isOrders ? "order-row" : undefined}
+                    tabIndex={isOrders ? 0 : undefined}
+                    onClick={isOrders ? () => onView(record) : undefined}
+                    onKeyDown={
+                      isOrders
+                        ? (event) => {
+                          if (event.key === "Enter" || event.key === " ") {
+                            event.preventDefault();
+                            onView(record);
+                          }
+                        }
+                        : undefined
+                    }
+                    aria-label={
+                      isOrders
+                        ? `View order ${orderNumber(record)}`
+                        : undefined
+                    }
+                  >
                     {/* USERS */}
 
                     {resource === "users" && (
                       <>
                         <td>
                           <div className="cell-flex">
-
                             <span className="table-avatar">
                               {String(record.name ?? "?").slice(0, 1)}
                             </span>
 
                             <div>
-                              <strong>
-                                {String(record.name ?? "Unnamed")}
-                              </strong>
+                              <strong>{String(record.name ?? "Unnamed")}</strong>
 
-                              <small>
-                                {String(record.email ?? "")}
-                              </small>
+                              <small>{String(record.email ?? "")}</small>
                             </div>
-
                           </div>
                         </td>
 
@@ -3292,45 +3326,33 @@ function Collection({
                     {resource === "products" && (
                       <>
                         <td>
-
                           <div className="cell-flex">
-
                             <span
                               className="product-thumb"
                               style={
-                                Array.isArray(record.images) &&
-                                record.images[0]
+                                Array.isArray(record.images) && record.images[0]
                                   ? {
-                                      backgroundImage: `url("${String(
-                                        record.images[0]
-                                      )}")`,
-                                    }
+                                    backgroundImage: `url("${String(
+                                      record.images[0]
+                                    )}")`,
+                                  }
                                   : undefined
                               }
                             />
 
                             <div>
-
                               <strong>
                                 {String(record.name ?? "Unnamed scent")}
                               </strong>
 
                               <div>
-                                {String(record.brand ?? "Independent")}{" "}
-                                ·{" "}
-                                {String(
-                                  record.category ?? "Uncategorised"
-                                )}
+                                {String(record.brand ?? "Independent")} ·{" "}
+                                {String(record.category ?? "Uncategorised")}
                               </div>
 
-                              <small>
-                                {String(record.type ?? "Fragrance")}
-                              </small>
-
+                              <small>{String(record.type ?? "Fragrance")}</small>
                             </div>
-
                           </div>
-
                         </td>
 
                         <td className="size-td">
@@ -3345,40 +3367,32 @@ function Collection({
 
                     {/* ORDERS */}
 
-                    {resource === "orders" && (
+                    {isOrders && (
                       <>
                         <td>
-                          <strong>
-                            #
-                            {String(record._id).slice(-6).toUpperCase()}
-                          </strong>
+                          <div className="order-id-cell">
+                            <strong>#{orderNumber(record)}</strong>
 
-                          <small>
-                            {Array.isArray(record.items)
-                              ? (record.items as unknown[]).length
-                              : Number(record.items ?? 1)}{" "}
-                            item(s)
-                          </small>
+                            <small>
+                              {orderItemCount(record)} item
+                              {orderItemCount(record) === 1 ? "" : "s"} ·{" "}
+                              {formatDate(record.createdAt)}
+                            </small>
+                          </div>
                         </td>
 
                         <td>
-                          {String(
-                            (
-                              record.shipping as
-                                | Record<string, unknown>
-                                | undefined
-                            )?.name ??
-                              record.customerName ??
-                              record.customer ??
-                              "Guest"
-                          )}
+                          <div className="order-customer">
+                            <strong>{orderCustomer(record).name}</strong>
+
+                            {orderCustomer(record).contact && (
+                              <small>{orderCustomer(record).contact}</small>
+                            )}
+                          </div>
                         </td>
 
                         <td className="price">
-                          Rs.{" "}
-                          {Number(record.total ?? 0).toLocaleString(
-                            "en-IN"
-                          )}
+                          {formatRupees(Number(record.total ?? 0))}
                         </td>
 
                         <td>
@@ -3394,47 +3408,462 @@ function Collection({
                     )}
 
                     <td className="row-actions">
+                      {isOrders ? (
+                        <>
+                          <span className="order-row-hint">
+                            View details
+                            <svg viewBox="0 0 24 24" aria-hidden="true">
+                              <path d="M9 6l6 6-6 6" />
+                            </svg>
+                          </span>
 
-                      <button
-                        type="button"
-                        className="table-icon-action edit-action"
-                        onClick={() => onEdit(record)}
-                        aria-label={`Edit ${resource.slice(0, -1)}`}
-                        title="Edit"
-                      >
-                        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L8 18l-4 1 1-4Z"/></svg>
-                      </button>
+                          <button
+                            type="button"
+                            className="table-icon-action edit-action"
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              onView(record);
+                            }}
+                            aria-label="View order details"
+                            title="View details"
+                          >
+                            <svg viewBox="0 0 24 24" aria-hidden="true">
+                              <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Z" />
+                              <circle cx="12" cy="12" r="3" />
+                            </svg>
+                          </button>
+                        </>
+                      ) : (
+                        <button
+                          type="button"
+                          className="table-icon-action edit-action"
+                          onClick={() => onEdit(record)}
+                          aria-label={`Edit ${resource.slice(0, -1)}`}
+                          title="Edit"
+                        >
+                          <svg viewBox="0 0 24 24" aria-hidden="true">
+                            <path d="M12 20h9" />
+                            <path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L8 18l-4 1 1-4Z" />
+                          </svg>
+                        </button>
+                      )}
 
                       <button
                         type="button"
                         className="table-icon-action delete-action"
-                        onClick={() => onDelete(record._id)}
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          onDelete(record._id);
+                        }}
                         aria-label={`Delete ${resource.slice(0, -1)}`}
                         title="Delete"
                       >
-                        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="m19 6-1 14H6L5 6"/><path d="M10 11v5M14 11v5"/></svg>
+                        <svg viewBox="0 0 24 24" aria-hidden="true">
+                          <path d="M3 6h18" />
+                          <path d="M8 6V4h8v2" />
+                          <path d="m19 6-1 14H6L5 6" />
+                          <path d="M10 11v5M14 11v5" />
+                        </svg>
                       </button>
-
                     </td>
-
                   </tr>
                 ))
               )}
-
             </tbody>
-
           </table>
-
         </div>
-
       </div>
-
     </div>
   );
 }
 
 /* =========================================================
-   RECORD MODAL
+   ORDER DETAIL DRAWER
+========================================================= */
+
+type AdminOrderItem = {
+  name?: string;
+  quantity?: number;
+  price?: number;
+  size?: string | number;
+  imageUrl?: string;
+  productId?: string;
+};
+
+type AdminOrderShipping = {
+  name?: string;
+  email?: string;
+  phone?: string;
+  address?: string;
+  city?: string;
+  postalCode?: string;
+};
+
+function OrderDrawer({
+  order,
+  saving,
+  onClose,
+  onSaveStatus,
+}: {
+  order: RecordItem;
+  saving: boolean;
+  onClose: () => void;
+  onSaveStatus: (status: string) => void;
+}) {
+  const currentStatus = String(order.status ?? "pending");
+
+  const [selectedStatus, setSelectedStatus] = useState(currentStatus);
+
+  const [imgErrors, setImgErrors] = useState<Record<number, boolean>>({});
+
+  // Keep the dropdown in sync after a successful save
+  useEffect(() => {
+    setSelectedStatus(currentStatus);
+  }, [currentStatus]);
+
+  // Close with Escape
+  useEffect(() => {
+    function onKey(event: KeyboardEvent) {
+      if (event.key === "Escape") {
+        onClose();
+      }
+    }
+
+    window.addEventListener("keydown", onKey);
+
+    return () => window.removeEventListener("keydown", onKey);
+  }, [onClose]);
+
+  const items = Array.isArray(order.items)
+    ? (order.items as unknown as AdminOrderItem[])
+    : [];
+
+  const shipping = (order.shipping ?? {}) as AdminOrderShipping;
+
+  const customer = orderCustomer(order);
+
+  const total = Number(order.total ?? 0);
+
+  const subtotal = items.reduce(
+    (sum, item) => sum + Number(item.price ?? 0) * Number(item.quantity ?? 1),
+    0
+  );
+
+  const hasItemPrices = items.some((item) => item.price !== undefined);
+
+  const deliveryFee = hasItemPrices ? Math.max(0, total - subtotal) : 0;
+
+  const payment = String(
+    order.paymentMethod ?? order.payment ?? order.paymentStatus ?? ""
+  );
+
+  const isCancelled = currentStatus === "cancelled";
+
+  const stepKey = currentStatus === "completed" ? "delivered" : currentStatus;
+
+  const currentStepIndex = ORDER_STEPS.findIndex((step) => step.id === stepKey);
+
+  const phoneDigits = (shipping.phone ?? "").replace(/[^\d]/g, "");
+
+  const addressLine = [shipping.address, shipping.city, shipping.postalCode]
+    .filter(Boolean)
+    .join(", ");
+
+  async function copyId() {
+    try {
+      await navigator.clipboard.writeText(String(order._id));
+      toast.success("Order ID copied.");
+    } catch {
+      toast.error("Could not copy the order ID.");
+    }
+  }
+
+  return (
+    <div
+      className="drawer-backdrop"
+      onMouseDown={(event) => {
+        if (event.target === event.currentTarget) {
+          onClose();
+        }
+      }}
+    >
+      <aside
+        className="order-drawer"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="order-drawer-title"
+      >
+        {/* HEADER */}
+
+        <header className="drawer-head">
+          <button
+            type="button"
+            className="drawer-close"
+            onClick={onClose}
+            aria-label="Close order details"
+          >
+            ×
+          </button>
+
+          <span className="drawer-kicker">Order details</span>
+
+          <div className="drawer-title-row">
+            <h2 id="order-drawer-title" style={{ color: "white" }}>
+              #{orderNumber(order)}
+            </h2>
+
+            <span className={`order-status ${currentStatus}`}>
+              {currentStatus}
+            </span>
+          </div>
+
+          <div className="drawer-meta">
+            <span>Placed {formatDateTime(order.createdAt)}</span>
+
+            <button type="button" className="drawer-copy" onClick={copyId}>
+              Copy order ID
+            </button>
+          </div>
+        </header>
+
+        {/* BODY */}
+
+        <div className="drawer-body">
+          {/* QUICK STATS */}
+
+          <div className="drawer-stats">
+            <div className="drawer-stat">
+              <span>Items</span>
+              <strong>{orderItemCount(order)}</strong>
+            </div>
+
+            <div className="drawer-stat">
+              <span>Payment</span>
+              <strong style={{ textTransform: "capitalize" }}>
+                {payment || "Not recorded"}
+              </strong>
+            </div>
+
+            <div className="drawer-stat total">
+              <span>Order total</span>
+              <strong>{formatRupees(total)}</strong>
+            </div>
+          </div>
+
+          {/* PROGRESS */}
+
+          <section className="drawer-card">
+            <h3>Order progress</h3>
+
+            {isCancelled ? (
+              <div className="order-cancelled">
+                This order was cancelled.
+              </div>
+            ) : (
+              <ol className="order-steps">
+                {ORDER_STEPS.map((step, index) => {
+                  const state =
+                    index < currentStepIndex
+                      ? "done"
+                      : index === currentStepIndex
+                        ? "current"
+                        : "";
+
+                  return (
+                    <li
+                      key={step.id}
+                      className={`order-step ${state}`}
+                      aria-current={state === "current" ? "step" : undefined}
+                    >
+                      <i>{state === "done" ? "✓" : ""}</i>
+                      {step.label}
+                    </li>
+                  );
+                })}
+              </ol>
+            )}
+          </section>
+
+          {/* CUSTOMER + DELIVERY */}
+
+          <section className="drawer-card">
+            <h3>Customer &amp; delivery</h3>
+
+            <dl className="drawer-info-grid">
+              <div>
+                <dt>Name</dt>
+                <dd>{shipping.name || customer.name}</dd>
+              </div>
+
+              <div>
+                <dt>Phone</dt>
+                <dd>{shipping.phone || "Not provided"}</dd>
+              </div>
+
+              <div className="wide">
+                <dt>Email</dt>
+                <dd>{shipping.email || "Not provided"}</dd>
+              </div>
+
+              <div className="wide">
+                <dt>Delivery address</dt>
+                <dd>{addressLine || "Not provided"}</dd>
+              </div>
+            </dl>
+
+            {(shipping.phone || shipping.email) && (
+              <div className="drawer-contact">
+                {shipping.phone && (
+                  <a href={`tel:${shipping.phone}`}>Call</a>
+                )}
+
+                {phoneDigits && (
+                  <a
+                    href={`https://wa.me/${phoneDigits}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    WhatsApp
+                  </a>
+                )}
+
+                {shipping.email && (
+                  <a href={`mailto:${shipping.email}`}>Email</a>
+                )}
+              </div>
+            )}
+          </section>
+
+          {/* ITEMS */}
+
+          <section className="drawer-card">
+            <h3>Items ({orderItemCount(order)})</h3>
+
+            {items.length === 0 ? (
+              <p className="drawer-empty">
+                No item details were saved with this order.
+              </p>
+            ) : (
+              <ul className="drawer-items">
+                {items.map((item, index) => {
+                  const quantity = Number(item.quantity ?? 1);
+
+                  return (
+                    <li className="drawer-item" key={index}>
+                      <div className="drawer-item-thumb">
+                        {item.imageUrl && !imgErrors[index] ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img
+                            src={item.imageUrl}
+                            alt={item.name ?? "Product"}
+                            width={56}
+                            height={64}
+                            onError={() =>
+                              setImgErrors((current) => ({
+                                ...current,
+                                [index]: true,
+                              }))
+                            }
+                          />
+                        ) : (
+                          "K"
+                        )}
+                      </div>
+
+                      <div style={{ minWidth: 0 }}>
+                        <p className="drawer-item-name">
+                          {item.name ?? "Unnamed fragrance"}
+                        </p>
+
+                        <div className="drawer-item-meta">
+                          {item.size !== undefined && item.size !== "" && (
+                            <span>
+                              {typeof item.size === "number" ||
+                                /^\d+$/.test(String(item.size))
+                                ? `${item.size} ml`
+                                : String(item.size)}
+                            </span>
+                          )}
+
+                          <span>Qty {quantity}</span>
+                        </div>
+                      </div>
+
+                      <div className="drawer-item-total">
+                        {item.price !== undefined
+                          ? formatRupees(Number(item.price) * quantity)
+                          : "—"}
+
+                        {item.price !== undefined && quantity > 1 && (
+                          <small>{formatRupees(Number(item.price))} each</small>
+                        )}
+                      </div>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+
+            {/* PRICE SUMMARY */}
+
+            <div className="drawer-summary">
+              {hasItemPrices && (
+                <div>
+                  <span>Subtotal</span>
+                  <span>{formatRupees(subtotal)}</span>
+                </div>
+              )}
+
+              {deliveryFee > 0 && (
+                <div>
+                  <span>Delivery</span>
+                  <span>{formatRupees(deliveryFee)}</span>
+                </div>
+              )}
+
+              <div className="grand">
+                <span>Total</span>
+                <strong>{formatRupees(total)}</strong>
+              </div>
+            </div>
+          </section>
+        </div>
+
+        {/* STATUS FOOTER */}
+
+        <footer className="drawer-foot">
+          <label>
+            <span>Update order status</span>
+
+            <select
+              value={selectedStatus}
+              onChange={(event) => setSelectedStatus(event.target.value)}
+              disabled={saving}
+            >
+              {ORDER_STATUSES.map((status) => (
+                <option key={status} value={status}>
+                  {status}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          <button
+            type="button"
+            className="primary-action"
+            disabled={saving || selectedStatus === currentStatus}
+            onClick={() => onSaveStatus(selectedStatus)}
+          >
+            {saving ? "Saving..." : "Save status"}
+          </button>
+        </footer>
+      </aside>
+    </div>
+  );
+}
+
+/* =========================================================
+   RECORD MODAL (customers + fragrances)
 ========================================================= */
 
 function RecordModal({
@@ -3443,106 +3872,70 @@ function RecordModal({
   onClose,
   onSubmit,
 }: {
-  collection: CollectionResource;
+  collection: "users" | "products";
   editing: RecordItem | null;
   onClose: () => void;
-  onSubmit: (
-    event: FormEvent<HTMLFormElement>
-  ) => void;
+  onSubmit: (event: FormEvent<HTMLFormElement>) => void;
 }) {
-  const defaults =
-    emptyForms[collection];
+  const defaults = emptyForms.products;
 
-  const isProduct =
-    collection === "products";
+  const isProduct = collection === "products";
 
-  const [imageUploadingCount, setImageUploadingCount] =
-    useState(0);
+  const [imageUploadingCount, setImageUploadingCount] = useState(0);
 
   /* =====================================================
      EXISTING IMAGES
   ===================================================== */
 
-  const existingImages =
-    Array.isArray(editing?.images)
-      ? editing.images.map(String)
-      : editing?.imageUrl
+  const existingImages = Array.isArray(editing?.images)
+    ? editing.images.map(String)
+    : editing?.imageUrl
       ? [String(editing.imageUrl)]
       : [];
 
-  const existingDecants =
-    Array.isArray(editing?.decants)
-      ? editing.decants
-      : [];
+  const existingDecants = Array.isArray(editing?.decants)
+    ? editing.decants
+    : [];
 
   // Keep an editable list instead of hard-coding two image fields.
   // There is intentionally no maximum number of images.
-  const [productImages, setProductImages] =
-    useState<string[]>(
-      existingImages.length > 0
-        ? existingImages
-        : [""]
-    );
+  const [productImages, setProductImages] = useState<string[]>(
+    existingImages.length > 0 ? existingImages : [""]
+  );
 
   /* =====================================================
      EXISTING DECANTS
   ===================================================== */
 
   const decant5 = existingDecants.find(
-    (item) =>
-      Number(
-        (item as Record<string, unknown>)
-          .size
-      ) === 5
+    (item) => Number((item as Record<string, unknown>).size) === 5
   ) as Record<string, unknown> | undefined;
 
   const decant10 = existingDecants.find(
-    (item) =>
-      Number(
-        (item as Record<string, unknown>)
-          .size
-      ) === 10
+    (item) => Number((item as Record<string, unknown>).size) === 10
   ) as Record<string, unknown> | undefined;
 
   /* =====================================================
      EXISTING FRAGRANCE DATA
   ===================================================== */
 
-  const fragrance =
-    (editing?.fragrance ?? {}) as Record<
-      string,
-      unknown
-    >;
+  const fragrance = (editing?.fragrance ?? {}) as Record<string, unknown>;
 
-  const notes =
-    (editing?.notes ?? {}) as Record<
-      string,
-      unknown
-    >;
+  const notes = (editing?.notes ?? {}) as Record<string, unknown>;
 
-  const selectedSeasons =
-    Array.isArray(fragrance.season)
-      ? fragrance.season.map(String)
-      : [];
+  const selectedSeasons = Array.isArray(fragrance.season)
+    ? fragrance.season.map(String)
+    : [];
 
-  const selectedOccasions =
-    Array.isArray(fragrance.occasion)
-      ? fragrance.occasion.map(String)
-      : [];
+  const selectedOccasions = Array.isArray(fragrance.occasion)
+    ? fragrance.occasion.map(String)
+    : [];
 
-  const isSubmitDisabled =
-    imageUploadingCount > 0;
+  const isSubmitDisabled = imageUploadingCount > 0;
 
-  function changeUploadState(
-    uploading: boolean
-  ) {
-    setImageUploadingCount(
-      (current) =>
-        Math.max(
-          0,
-          current +
-            (uploading ? 1 : -1)
-        )
+  function changeUploadState(uploading: boolean) {
+    setImageUploadingCount((current) =>
+      Math.max(0, current + (uploading ? 1 : -1))
     );
   }
 
@@ -3550,10 +3943,7 @@ function RecordModal({
     <div
       className="modal-backdrop"
       onMouseDown={(event) => {
-        if (
-          event.target ===
-          event.currentTarget
-        ) {
+        if (event.target === event.currentTarget) {
           onClose();
         }
       }}
@@ -3561,16 +3951,13 @@ function RecordModal({
       aria-modal="true"
       aria-labelledby="modal-title"
     >
-
       <form
         className="record-modal record-modal-scrollable"
         onSubmit={onSubmit}
       >
-
         {/* HEADER */}
 
         <div className="record-modal-header-fixed">
-
           <button
             className="modal-close"
             onClick={onClose}
@@ -3584,61 +3971,46 @@ function RecordModal({
             {editing
               ? collection === "users"
                 ? "EDIT CUSTOMER"
-                : collection === "orders"
-                ? "EDIT ORDER"
                 : "EDIT FRAGRANCE"
               : collection === "users"
-              ? "NEW CUSTOMER"
-              : collection === "orders"
-              ? "NEW ORDER"
-              : "NEW FRAGRANCE"}
+                ? "NEW CUSTOMER"
+                : "NEW FRAGRANCE"}
           </span>
 
           <h2 id="modal-title">
             {editing
-              ? collection === "orders" ? "Update order status" : collection === "users" ? "Edit customer" : "Edit fragrance"
-              : collection === "products" ? "Add fragrance" : collection === "users" ? "Add customer" : "Add order"}
+              ? collection === "users"
+                ? "Edit customer"
+                : "Edit fragrance"
+              : collection === "products"
+                ? "Add fragrance"
+                : "Add customer"}
           </h2>
-
         </div>
 
         {/* CONTENT */}
 
         <div className="record-modal-content">
-
           {isProduct ? (
-
             <div className="perfume-form">
-
               {/* =================================================
                   01 IMAGES
               ================================================= */}
 
               <section className="form-section-card">
-
                 <div className="form-section-heading">
-
                   <div>
-                    <span className="admin-kicker">
-                      01 / IMAGES
-                    </span>
+                    <span className="admin-kicker">01 / IMAGES</span>
 
-                    <h3>
-                      Product photography
-                    </h3>
+                    <h3>Product photography</h3>
 
                     <p>
-                      Upload up to two clean
-                      perfume images. They will
-                      be saved in the MongoDB
-                      <code>images[]</code> array.
+                      Upload as many clean perfume images as you need. They
+                      will be saved in the MongoDB <code>images[]</code> array.
                     </p>
                   </div>
 
-                  <span className="form-section-number">
-                    01
-                  </span>
-
+                  <span className="form-section-number">01</span>
                 </div>
 
                 <div className="product-image-manager">
@@ -3646,8 +4018,9 @@ function RecordModal({
                     <div>
                       <strong>Add as many product photos as you want.</strong>
                       <p>
-                        The first image is used as the main product image.
-                        All uploaded images are saved in the MongoDB <code>images[]</code> array.
+                        The first image is used as the main product image. All
+                        uploaded images are saved in the MongoDB{" "}
+                        <code>images[]</code> array.
                       </p>
                     </div>
 
@@ -3659,7 +4032,10 @@ function RecordModal({
 
                   <div className="image-upload-list">
                     {productImages.map((url, index) => (
-                      <div className="image-upload-card image-upload-card-modern" key={`product-image-${index}`}>
+                      <div
+                        className="image-upload-card image-upload-card-modern"
+                        key={`product-image-${index}`}
+                      >
                         <div className="image-card-top">
                           <div>
                             <span className="field-mini-label">
@@ -3678,7 +4054,9 @@ function RecordModal({
                               className="image-remove-button"
                               onClick={() => {
                                 setProductImages((current) =>
-                                  current.filter((_, imageIndex) => imageIndex !== index)
+                                  current.filter(
+                                    (_, imageIndex) => imageIndex !== index
+                                  )
                                 );
                               }}
                               aria-label={`Remove image ${index + 1}`}
@@ -3714,14 +4092,17 @@ function RecordModal({
                   <button
                     type="button"
                     className="add-image-button"
-                    onClick={() => setProductImages((current) => [...current, ""])}
+                    onClick={() =>
+                      setProductImages((current) => [...current, ""])
+                    }
                   >
                     <span>+</span>
                     Add another image
                   </button>
 
                   <p className="image-manager-help">
-                    You can keep adding images. Empty image slots are ignored when the product is saved.
+                    You can keep adding images. Empty image slots are ignored
+                    when the product is saved.
                   </p>
                 </div>
               </section>
@@ -3731,75 +4112,49 @@ function RecordModal({
               ================================================= */}
 
               <section className="form-section-card">
-
                 <div className="form-section-heading">
-
                   <div>
-                    <span className="admin-kicker">
-                      02 / IDENTITY
-                    </span>
+                    <span className="admin-kicker">02 / IDENTITY</span>
 
-                    <h3>
-                      Perfume information
-                    </h3>
+                    <h3>Perfume information</h3>
 
                     <p>
-                      Give customers the
-                      essential information
-                      they need before buying
-                      a decant.
+                      Give customers the essential information they need before
+                      buying a decant.
                     </p>
                   </div>
 
-                  <span className="form-section-number">
-                    02
-                  </span>
-
+                  <span className="form-section-number">02</span>
                 </div>
 
                 <div className="form-grid-2">
-
                   {/* NAME */}
 
                   <label className="form-field full-field">
-
-                    <span>
-                      Perfume name *
-                    </span>
+                    <span>Perfume name *</span>
 
                     <input
                       name="name"
-                      defaultValue={String(
-                        editing?.name ??
-                          (defaults as typeof emptyForms.products).name
-                      )}
+                      defaultValue={String(editing?.name ?? defaults.name)}
                       required
                       placeholder="e.g. Dior Sauvage Eau de Parfum"
                     />
-
                   </label>
 
                   {/* BRAND */}
 
                   <label className="form-field">
-
-                    <span>
-                      Brand *
-                    </span>
+                    <span>Brand *</span>
 
                     <input
                       name="brand"
-                      defaultValue={String(
-                        editing?.brand ??
-                          (defaults as typeof emptyForms.products).brand
-                      )}
+                      defaultValue={String(editing?.brand ?? defaults.brand)}
                       required
                       placeholder="e.g. Dior"
                       list="perfume-brands"
                     />
 
                     <datalist id="perfume-brands">
-
                       <option value="Dior" />
                       <option value="Chanel" />
                       <option value="Yves Saint Laurent" />
@@ -3810,268 +4165,162 @@ function RecordModal({
                       <option value="Versace" />
                       <option value="Rabanne" />
                       <option value="Maison Francis Kurkdjian" />
-
                     </datalist>
-
                   </label>
 
                   {/* CATEGORY */}
 
                   <label className="form-field">
-
-                    <span>
-                      Category *
-                    </span>
+                    <span>Category *</span>
 
                     <select
                       name="category"
-                      defaultValue={String(
-                        editing?.category ??
-                          "Men"
-                      )}
+                      defaultValue={String(editing?.category ?? "Men")}
                       required
                     >
-                      <option value="Men">
-                        Men
-                      </option>
+                      <option value="Men">Men</option>
 
-                      <option value="Women">
-                        Women
-                      </option>
+                      <option value="Women">Women</option>
 
-                      <option value="Unisex">
-                        Unisex
-                      </option>
+                      <option value="Unisex">Unisex</option>
                     </select>
-
                   </label>
 
                   {/* TYPE */}
 
                   <label className="form-field">
-
-                    <span>
-                      Fragrance type *
-                    </span>
+                    <span>Fragrance type *</span>
 
                     <select
                       name="type"
-                      defaultValue={String(
-                        editing?.type ??
-                          "Eau de Parfum"
-                      )}
+                      defaultValue={String(editing?.type ?? "Eau de Parfum")}
                       required
                     >
-                      <option value="Eau de Parfum">
-                        Eau de Parfum
-                      </option>
+                      <option value="Eau de Parfum">Eau de Parfum</option>
 
-                      <option value="Eau de Toilette">
-                        Eau de Toilette
-                      </option>
+                      <option value="Eau de Toilette">Eau de Toilette</option>
 
-                      <option value="Parfum">
-                        Parfum
-                      </option>
+                      <option value="Parfum">Parfum</option>
 
-                      <option value="Eau de Cologne">
-                        Eau de Cologne
-                      </option>
+                      <option value="Eau de Cologne">Eau de Cologne</option>
 
                       <option value="Extrait de Parfum">
                         Extrait de Parfum
                       </option>
                     </select>
-
                   </label>
 
                   {/* CONCENTRATION */}
 
                   <label className="form-field">
-
-                    <span>
-                      Concentration *
-                    </span>
+                    <span>Concentration *</span>
 
                     <select
                       name="concentration"
                       defaultValue={String(
-                        fragrance.concentration ??
-                          "Eau de Parfum"
+                        fragrance.concentration ?? "Eau de Parfum"
                       )}
                       required
                     >
-                      <option value="Eau de Parfum">
-                        Eau de Parfum
-                      </option>
+                      <option value="Eau de Parfum">Eau de Parfum</option>
 
-                      <option value="Eau de Toilette">
-                        Eau de Toilette
-                      </option>
+                      <option value="Eau de Toilette">Eau de Toilette</option>
 
-                      <option value="Parfum">
-                        Parfum
-                      </option>
+                      <option value="Parfum">Parfum</option>
 
                       <option value="Extrait de Parfum">
                         Extrait de Parfum
                       </option>
 
-                      <option value="Eau de Cologne">
-                        Eau de Cologne
-                      </option>
+                      <option value="Eau de Cologne">Eau de Cologne</option>
                     </select>
-
                   </label>
 
                   {/* GENDER */}
 
                   <label className="form-field">
-
-                    <span>
-                      Gender *
-                    </span>
+                    <span>Gender *</span>
 
                     <select
                       name="gender"
-                      defaultValue={String(
-                        fragrance.gender ??
-                          "Men"
-                      )}
+                      defaultValue={String(fragrance.gender ?? "Men")}
                       required
                     >
-                      <option value="Men">
-                        Men
-                      </option>
+                      <option value="Men">Men</option>
 
-                      <option value="Women">
-                        Women
-                      </option>
+                      <option value="Women">Women</option>
 
-                      <option value="Unisex">
-                        Unisex
-                      </option>
+                      <option value="Unisex">Unisex</option>
                     </select>
-
                   </label>
 
                   {/* LONGEVITY */}
 
                   <label className="form-field">
-
-                    <span>
-                      Longevity
-                    </span>
+                    <span>Longevity</span>
 
                     <select
                       name="longevity"
-                      defaultValue={String(
-                        fragrance.longevity ??
-                          ""
-                      )}
+                      defaultValue={String(fragrance.longevity ?? "")}
                     >
-                      <option value="">
-                        Select longevity
-                      </option>
+                      <option value="">Select longevity</option>
 
-                      <option value="4-6 hours">
-                        4-6 hours
-                      </option>
+                      <option value="4-6 hours">4-6 hours</option>
 
-                      <option value="6-8 hours">
-                        6-8 hours
-                      </option>
+                      <option value="6-8 hours">6-8 hours</option>
 
-                      <option value="8-10 hours">
-                        8-10 hours
-                      </option>
+                      <option value="8-10 hours">8-10 hours</option>
 
-                      <option value="10-12 hours">
-                        10-12 hours
-                      </option>
+                      <option value="10-12 hours">10-12 hours</option>
 
-                      <option value="12+ hours">
-                        12+ hours
-                      </option>
+                      <option value="12+ hours">12+ hours</option>
                     </select>
-
                   </label>
 
                   {/* SILLAGE */}
 
                   <label className="form-field">
-
-                    <span>
-                      Sillage
-                    </span>
+                    <span>Sillage</span>
 
                     <select
                       name="sillage"
-                      defaultValue={String(
-                        fragrance.sillage ??
-                          "Moderate"
-                      )}
+                      defaultValue={String(fragrance.sillage ?? "Moderate")}
                     >
-                      <option value="Soft">
-                        Soft
-                      </option>
+                      <option value="Soft">Soft</option>
 
-                      <option value="Moderate">
-                        Moderate
-                      </option>
+                      <option value="Moderate">Moderate</option>
 
-                      <option value="Strong">
-                        Strong
-                      </option>
+                      <option value="Strong">Strong</option>
 
-                      <option value="Very Strong">
-                        Very Strong
-                      </option>
+                      <option value="Very Strong">Very Strong</option>
                     </select>
-
                   </label>
 
                   {/* SHORT DESCRIPTION */}
 
                   <label className="form-field full-field">
-
-                    <span>
-                      Short description
-                    </span>
+                    <span>Short description</span>
 
                     <input
                       name="shortDescription"
-                      defaultValue={String(
-                        editing?.shortDescription ??
-                          ""
-                      )}
+                      defaultValue={String(editing?.shortDescription ?? "")}
                       placeholder="Fresh, spicy and woody men's fragrance."
                     />
-
                   </label>
 
                   {/* DESCRIPTION */}
 
                   <label className="form-field full-field">
-
-                    <span>
-                      Full description
-                    </span>
+                    <span>Full description</span>
 
                     <textarea
                       name="description"
-                      defaultValue={String(
-                        editing?.description ??
-                          ""
-                      )}
+                      defaultValue={String(editing?.description ?? "")}
                       rows={4}
                       placeholder="Dior Sauvage Eau de Parfum is a fresh and powerful fragrance."
                     />
-
                   </label>
-
                 </div>
-
               </section>
 
               {/* =================================================
@@ -4079,86 +4328,50 @@ function RecordModal({
               ================================================= */}
 
               <section className="form-section-card">
-
                 <div className="form-section-heading">
-
                   <div>
-                    <span className="admin-kicker">
-                      03 / PROFILE
-                    </span>
+                    <span className="admin-kicker">03 / PROFILE</span>
 
-                    <h3>
-                      When should customers wear it?
-                    </h3>
+                    <h3>When should customers wear it?</h3>
 
                     <p>
-                      Select all seasons and
-                      occasions that match this
+                      Select all seasons and occasions that match this
                       fragrance.
                     </p>
                   </div>
 
-                  <span className="form-section-number">
-                    03
-                  </span>
-
+                  <span className="form-section-number">03</span>
                 </div>
 
                 {/* SEASONS */}
 
                 <div className="check-group">
-
-                  <span className="check-group-title">
-                    Seasons
-                  </span>
+                  <span className="check-group-title">Seasons</span>
 
                   <div className="check-grid">
-
-                    {[
-                      "Spring",
-                      "Summer",
-                      "Autumn",
-                      "Winter",
-                    ].map((item) => (
-                      <label
-                        className="check-card"
-                        key={item}
-                      >
-
+                    {["Spring", "Summer", "Autumn", "Winter"].map((item) => (
+                      <label className="check-card" key={item}>
                         <input
                           type="checkbox"
                           name="season"
                           value={item}
-                          defaultChecked={selectedSeasons.includes(
-                            item
-                          )}
+                          defaultChecked={selectedSeasons.includes(item)}
                         />
 
-                        <span className="custom-check">
-                          ✓
-                        </span>
+                        <span className="custom-check">✓</span>
 
-                        <span>
-                          {item}
-                        </span>
-
+                        <span>{item}</span>
                       </label>
                     ))}
-
                   </div>
-
                 </div>
 
                 {/* OCCASIONS */}
 
                 <div className="check-group">
-
-                  <span className="check-group-title">
-                    Occasions
-                  </span>
+                  <span className="check-group-title">Occasions</span>
 
                   <div className="check-grid">
-
                     {[
                       "Casual",
                       "Office",
@@ -4167,35 +4380,21 @@ function RecordModal({
                       "Formal",
                       "Special Occasion",
                     ].map((item) => (
-                      <label
-                        className="check-card"
-                        key={item}
-                      >
-
+                      <label className="check-card" key={item}>
                         <input
                           type="checkbox"
                           name="occasion"
                           value={item}
-                          defaultChecked={selectedOccasions.includes(
-                            item
-                          )}
+                          defaultChecked={selectedOccasions.includes(item)}
                         />
 
-                        <span className="custom-check">
-                          ✓
-                        </span>
+                        <span className="custom-check">✓</span>
 
-                        <span>
-                          {item}
-                        </span>
-
+                        <span>{item}</span>
                       </label>
                     ))}
-
                   </div>
-
                 </div>
-
               </section>
 
               {/* =================================================
@@ -4203,86 +4402,55 @@ function RecordModal({
               ================================================= */}
 
               <section className="form-section-card">
-
                 <div className="form-section-heading">
-
                   <div>
-                    <span className="admin-kicker">
-                      04 / NOTES
-                    </span>
+                    <span className="admin-kicker">04 / NOTES</span>
 
-                    <h3>
-                      Fragrance notes
-                    </h3>
+                    <h3>Fragrance notes</h3>
 
                     <p>
-                      Separate multiple notes
-                      with commas. They will
-                      become MongoDB arrays.
+                      Separate multiple notes with commas. They will become
+                      MongoDB arrays.
                     </p>
                   </div>
 
-                  <span className="form-section-number">
-                    04
-                  </span>
-
+                  <span className="form-section-number">04</span>
                 </div>
 
                 <div className="notes-grid">
-
                   <label className="form-field">
-
-                    <span>
-                      Top notes
-                    </span>
+                    <span>Top notes</span>
 
                     <textarea
                       name="topNotes"
                       rows={3}
-                      defaultValue={arrayToText(
-                        notes.top
-                      )}
+                      defaultValue={arrayToText(notes.top)}
                       placeholder="Calabrian Bergamot, Pepper"
                     />
-
                   </label>
 
                   <label className="form-field">
-
-                    <span>
-                      Middle notes
-                    </span>
+                    <span>Middle notes</span>
 
                     <textarea
                       name="middleNotes"
                       rows={3}
-                      defaultValue={arrayToText(
-                        notes.middle
-                      )}
+                      defaultValue={arrayToText(notes.middle)}
                       placeholder="Lavender, Pink Pepper"
                     />
-
                   </label>
 
                   <label className="form-field full-field">
-
-                    <span>
-                      Base notes
-                    </span>
+                    <span>Base notes</span>
 
                     <textarea
                       name="baseNotes"
                       rows={3}
-                      defaultValue={arrayToText(
-                        notes.base
-                      )}
+                      defaultValue={arrayToText(notes.base)}
                       placeholder="Ambroxan, Cedar, Patchouli"
                     />
-
                   </label>
-
                 </div>
-
               </section>
 
               {/* =================================================
@@ -4290,97 +4458,46 @@ function RecordModal({
               ================================================= */}
 
               <section className="form-section-card">
-
                 <div className="form-section-heading">
-
                   <div>
+                    <span className="admin-kicker">05 / DECANTS</span>
 
-                    <span className="admin-kicker">
-                      05 / DECANTS
-                    </span>
-
-                    <h3>
-                      Choose what you sell
-                    </h3>
+                    <h3>Choose what you sell</h3>
 
                     <p>
-                      Set the original labelled
-                      price, Kyro selling price
-                      and stock for each size.
+                      Set the original labelled price, Kyro selling price and
+                      stock for each size.
                     </p>
-
                   </div>
 
-                  <span className="form-section-number">
-                    05
-                  </span>
-
+                  <span className="form-section-number">05</span>
                 </div>
 
                 <div className="decant-options">
-
                   <DecantEditor
                     size={5}
-                    enabled={
-                      decant5
-                        ? true
-                        : !editing
-                    }
+                    enabled={decant5 ? true : !editing}
                     labelledPrice={
                       decant5?.labelledPrice
-                        ? Number(
-                            decant5.labelledPrice
-                          )
+                        ? Number(decant5.labelledPrice)
                         : ""
                     }
-                    price={
-                      decant5?.price
-                        ? Number(
-                            decant5.price
-                          )
-                        : ""
-                    }
-                    stock={
-                      decant5?.stock
-                        ? Number(
-                            decant5.stock
-                          )
-                        : 0
-                    }
+                    price={decant5?.price ? Number(decant5.price) : ""}
+                    stock={decant5?.stock ? Number(decant5.stock) : 0}
                   />
 
                   <DecantEditor
                     size={10}
-                    enabled={
-                      decant10
-                        ? true
-                        : !editing
-                    }
+                    enabled={decant10 ? true : !editing}
                     labelledPrice={
                       decant10?.labelledPrice
-                        ? Number(
-                            decant10.labelledPrice
-                          )
+                        ? Number(decant10.labelledPrice)
                         : ""
                     }
-                    price={
-                      decant10?.price
-                        ? Number(
-                            decant10.price
-                          )
-                        : ""
-                    }
-                    stock={
-                      decant10?.stock
-                        ? Number(
-                            decant10.stock
-                          )
-                        : 0
-                    }
+                    price={decant10?.price ? Number(decant10.price) : ""}
+                    stock={decant10?.stock ? Number(decant10.stock) : 0}
                   />
-
                 </div>
-
               </section>
 
               {/* =================================================
@@ -4388,209 +4505,228 @@ function RecordModal({
               ================================================= */}
 
               <section className="form-section-card">
-
                 <div className="form-section-heading">
-
                   <div>
+                    <span className="admin-kicker">06 / VISIBILITY</span>
 
-                    <span className="admin-kicker">
-                      06 / VISIBILITY
-                    </span>
+                    <h3>Storefront settings</h3>
 
-                    <h3>
-                      Storefront settings
-                    </h3>
-
-                    <p>
-                      Control how this fragrance
-                      appears in your store.
-                    </p>
-
+                    <p>Control how this fragrance appears in your store.</p>
                   </div>
 
-                  <span className="form-section-number">
-                    06
-                  </span>
-
+                  <span className="form-section-number">06</span>
                 </div>
 
                 <div className="visibility-grid">
-
                   <label className="check-card toggle-card">
-
                     <input
                       type="checkbox"
                       name="isFeatured"
-                      defaultChecked={Boolean(
-                        editing?.isFeatured
-                      )}
+                      defaultChecked={Boolean(editing?.isFeatured)}
                     />
 
-                    <span className="custom-check">
-                      ✓
-                    </span>
+                    <span className="custom-check">✓</span>
 
                     <span>
-                      <strong>
-                        Featured
-                      </strong>
+                      <strong>Featured</strong>
 
-                      <small>
-                        Show in featured
-                        fragrance sections.
-                      </small>
+                      <small>Show in featured fragrance sections.</small>
                     </span>
-
                   </label>
 
                   <label className="check-card toggle-card">
-
                     <input
                       type="checkbox"
                       name="isBestSeller"
-                      defaultChecked={Boolean(
-                        editing?.isBestSeller
-                      )}
+                      defaultChecked={Boolean(editing?.isBestSeller)}
                     />
 
-                    <span className="custom-check">
-                      ✓
-                    </span>
+                    <span className="custom-check">✓</span>
 
                     <span>
-                      <strong>
-                        Best seller
-                      </strong>
+                      <strong>Best seller</strong>
 
-                      <small>
-                        Mark this fragrance
-                        as a popular choice.
-                      </small>
+                      <small>Mark this fragrance as a popular choice.</small>
                     </span>
-
                   </label>
 
                   <label className="check-card toggle-card">
-
                     <input
                       type="checkbox"
                       name="isActive"
                       defaultChecked={
-                        editing
-                          ? Boolean(
-                              editing.isActive
-                            )
-                          : true
+                        editing ? Boolean(editing.isActive) : true
                       }
                     />
 
-                    <span className="custom-check">
-                      ✓
-                    </span>
+                    <span className="custom-check">✓</span>
 
                     <span>
-                      <strong>
-                        Active
-                      </strong>
+                      <strong>Active</strong>
 
-                      <small>
-                        Allow customers to
-                        see and purchase it.
-                      </small>
+                      <small>Allow customers to see and purchase it.</small>
                     </span>
-
                   </label>
-
                 </div>
-
               </section>
-
             </div>
-
           ) : (
-
             /* =================================================
-               USERS / ORDERS
+               CUSTOMERS
             ================================================= */
 
-            collection === "users" ? (
-              <div className="simple-form-stack user-form-stack">
-                <section className="form-section-card">
-                  <div className="form-section-heading"><h3>Customer details</h3></div>
-                  <div className="form-grid-2">
-                    <label className="form-field"><span>Full name *</span><input name="name" defaultValue={String(editing?.name ?? "")} required autoComplete="name" placeholder="e.g. Kasun Perera" /></label>
-                    <label className="form-field"><span>Username *</span><input name="username" defaultValue={String(editing?.username ?? "")} required autoComplete="username" placeholder="e.g. kasun" /></label>
-                    <label className="form-field"><span>Email address *</span><input name="email" type="email" defaultValue={String(editing?.email ?? "")} required autoComplete="email" placeholder="e.g. kasun@example.com" /></label>
-                    <label className="form-field"><span>{editing ? "New password" : "Password *"}</span><input name="password" type="password" defaultValue="" required={!editing} minLength={6} autoComplete="new-password" placeholder={editing ? "Leave blank to keep current password" : "Minimum 6 characters"} />{editing && <small className="user-field-help">Leave blank to keep the current password.</small>}</label>
-                    <label className="form-field"><span>Role *</span><select name="role" defaultValue={String(editing?.role ?? "customer")} required><option value="customer">Customer</option><option value="admin">Administrator</option></select></label>
-                  </div>
-                </section>
-                <section className="form-section-card">
-                  <div className="form-section-heading"><h3>Contact details</h3></div>
-                  <div className="user-profile-grid">
-                    <div className="user-image-field"><MediaUpload name="imageUrl" initialUrl={String(editing?.imageUrl ?? "")} /></div>
-                    <div className="user-contact-fields"><label className="form-field"><span>Phone number</span><input name="phone" type="tel" defaultValue={String(editing?.phone ?? "")} autoComplete="tel" placeholder="+94771234567" /></label><label className="form-field"><span>Address</span><textarea name="address" rows={5} defaultValue={String(editing?.address ?? "")} autoComplete="street-address" placeholder="Colombo, Sri Lanka" /></label></div>
-                  </div>
-                </section>
-                <input type="hidden" name="createdAt" value={editing?.createdAt ? String(editing.createdAt) : new Date().toISOString()} readOnly />
-              </div>
-            ) : collection === "orders" ? (
+            <div className="simple-form-stack user-form-stack">
+              <section className="form-section-card">
+                <div className="form-section-heading">
+                  <h3>Customer details</h3>
+                </div>
 
-              <AdminOrderDetail
-                record={editing}
+                <div className="form-grid-2">
+                  <label className="form-field">
+                    <span>Full name *</span>
+                    <input
+                      name="name"
+                      defaultValue={String(editing?.name ?? "")}
+                      required
+                      autoComplete="name"
+                      placeholder="e.g. Kasun Perera"
+                    />
+                  </label>
+
+                  <label className="form-field">
+                    <span>Username *</span>
+                    <input
+                      name="username"
+                      defaultValue={String(editing?.username ?? "")}
+                      required
+                      autoComplete="username"
+                      placeholder="e.g. kasun"
+                    />
+                  </label>
+
+                  <label className="form-field">
+                    <span>Email address *</span>
+                    <input
+                      name="email"
+                      type="email"
+                      defaultValue={String(editing?.email ?? "")}
+                      required
+                      autoComplete="email"
+                      placeholder="e.g. kasun@example.com"
+                    />
+                  </label>
+
+                  <label className="form-field">
+                    <span>{editing ? "New password" : "Password *"}</span>
+                    <input
+                      name="password"
+                      type="password"
+                      defaultValue=""
+                      required={!editing}
+                      minLength={6}
+                      autoComplete="new-password"
+                      placeholder={
+                        editing
+                          ? "Leave blank to keep current password"
+                          : "Minimum 6 characters"
+                      }
+                    />
+                    {editing && (
+                      <small className="user-field-help">
+                        Leave blank to keep the current password.
+                      </small>
+                    )}
+                  </label>
+
+                  <label className="form-field">
+                    <span>Role *</span>
+                    <select
+                      name="role"
+                      defaultValue={String(editing?.role ?? "customer")}
+                      required
+                    >
+                      <option value="customer">Customer</option>
+                      <option value="admin">Administrator</option>
+                    </select>
+                  </label>
+                </div>
+              </section>
+
+              <section className="form-section-card">
+                <div className="form-section-heading">
+                  <h3>Contact details</h3>
+                </div>
+
+                <div className="user-profile-grid">
+                  <div className="user-image-field">
+                    <MediaUpload
+                      name="imageUrl"
+                      initialUrl={String(editing?.imageUrl ?? "")}
+                    />
+                  </div>
+
+                  <div className="user-contact-fields">
+                    <label className="form-field">
+                      <span>Phone number</span>
+                      <input
+                        name="phone"
+                        type="tel"
+                        defaultValue={String(editing?.phone ?? "")}
+                        autoComplete="tel"
+                        placeholder="+94771234567"
+                      />
+                    </label>
+
+                    <label className="form-field">
+                      <span>Address</span>
+                      <textarea
+                        name="address"
+                        rows={5}
+                        defaultValue={String(editing?.address ?? "")}
+                        autoComplete="street-address"
+                        placeholder="Colombo, Sri Lanka"
+                      />
+                    </label>
+                  </div>
+                </div>
+              </section>
+
+              <input
+                type="hidden"
+                name="createdAt"
+                value={
+                  editing?.createdAt
+                    ? String(editing.createdAt)
+                    : new Date().toISOString()
+                }
+                readOnly
               />
-
-            ) : (
-              <div className="simple-form-stack">
-                {Object.entries(defaults).map(([key, value]) => { const label=key.replace(/([A-Z])/g," $1").trim(); const isNumber=["total","items"].includes(key); return (<label key={key}><span>{label}</span>{key === "role" ? (<select name={key} defaultValue={String(editing?.[key] ?? value)} required><option value="customer">Customer</option><option value="admin">Administrator</option></select>) : key === "status" ? (<select name={key} defaultValue={String(editing?.[key] ?? value)} required><option value="pending">Pending</option><option value="paid">Paid</option><option value="shipped">Shipped</option><option value="completed">Completed</option><option value="cancelled">Cancelled</option></select>) : (<input name={key} defaultValue={String(editing?.[key] ?? value)} required type={isNumber ? "number" : key === "email" ? "email" : "text"} min={isNumber ? "0" : undefined} step={key === "total" ? "0.01" : undefined} placeholder={`Enter ${label.toLowerCase()}`} />)}</label>); })}
-              </div>
-            )
-
+            </div>
           )}
-
         </div>
 
         {/* FOOTER */}
 
         <div className="record-modal-footer">
-
-          <button
-            type="button"
-            onClick={onClose}
-            className="modal-cancel"
-          >
+          <button type="button" onClick={onClose} className="modal-cancel">
             Cancel
           </button>
 
-          {collection !== "orders" && (
-            <button
-              className="primary-action"
-              type="submit"
-              disabled={isSubmitDisabled}
-            >
-              {isSubmitDisabled
-                ? "Uploading image..."
-                : editing
+          <button
+            className="primary-action"
+            type="submit"
+            disabled={isSubmitDisabled}
+          >
+            {isSubmitDisabled
+              ? "Uploading image..."
+              : editing
                 ? "Save changes"
                 : isProduct
-                ? "Create fragrance"
-                : "Create record"}
-            </button>
-          )}
-
-          {collection === "orders" && editing && (
-            <button
-              className="primary-action"
-              type="submit"
-            >
-              Save status
-            </button>
-          )}
-
+                  ? "Create fragrance"
+                  : "Create customer"}
+          </button>
         </div>
-
       </form>
-
     </div>
   );
 }
@@ -4614,34 +4750,23 @@ function DecantEditor({
 }) {
   return (
     <div className="decant-card">
-
       <label className="decant-enable">
-
         <input
           type="checkbox"
           name={`decant${size}Enabled`}
           defaultChecked={enabled}
         />
 
-        <span className="custom-check">
-          ✓
-        </span>
+        <span className="custom-check">✓</span>
 
-        <span className="decant-title">
-          {size}ml Decant
-        </span>
-
+        <span className="decant-title">{size}ml Decant</span>
       </label>
 
       <div className="decant-fields">
-
         {/* LABELLED PRICE */}
 
         <label className="form-field">
-
-          <span>
-            Labelled Price (Rs.)
-          </span>
+          <span>Labelled Price (Rs.)</span>
 
           <input
             name={`decant${size}LabelledPrice`}
@@ -4649,22 +4774,14 @@ function DecantEditor({
             min="0"
             step="1"
             defaultValue={labelledPrice}
-            placeholder={
-              size === 5
-                ? "4000"
-                : "7000"
-            }
+            placeholder={size === 5 ? "4000" : "7000"}
           />
-
         </label>
 
         {/* SELLING PRICE */}
 
         <label className="form-field">
-
-          <span>
-            Kyro Price (Rs.)
-          </span>
+          <span>Kyro Price (Rs.)</span>
 
           <input
             name={`decant${size}Price`}
@@ -4672,22 +4789,14 @@ function DecantEditor({
             min="0"
             step="1"
             defaultValue={price}
-            placeholder={
-              size === 5
-                ? "3500"
-                : "6000"
-            }
+            placeholder={size === 5 ? "3500" : "6000"}
           />
-
         </label>
 
         {/* STOCK */}
 
         <label className="form-field">
-
-          <span>
-            Stock Units
-          </span>
+          <span>Stock Units</span>
 
           <input
             name={`decant${size}Stock`}
@@ -4695,582 +4804,17 @@ function DecantEditor({
             min="0"
             step="1"
             defaultValue={stock}
-            placeholder={
-              size === 5
-                ? "15"
-                : "10"
-            }
+            placeholder={size === 5 ? "15" : "10"}
           />
-
         </label>
-
       </div>
 
-      <input
-        type="hidden"
-        name={`decant${size}Unit`}
-        value="ml"
-        readOnly
-      />
+      <input type="hidden" name={`decant${size}Unit`} value="ml" readOnly />
 
       <p className="decant-help">
-        Labelled price = original/reference
-        price. Kyro price = actual customer
+        Labelled price = original/reference price. Kyro price = actual customer
         selling price.
       </p>
-
-    </div>
-  );
-}
-
-/* =========================================================
-   ADMIN ORDER DETAIL
-========================================================= */
-
-type AdminOrderItem = {
-  name: string;
-  quantity: number;
-  price?: number;
-  size?: string;
-  imageUrl?: string;
-  productId?: string;
-};
-
-type AdminOrderShipping = {
-  name?: string;
-  email?: string;
-  phone?: string;
-  address?: string;
-  city?: string;
-  postalCode?: string;
-};
-
-function AdminOrderDetail({
-  record,
-}: {
-  record: RecordItem | null;
-}) {
-  const [imgErrors, setImgErrors] = useState<
-    Record<number, boolean>
-  >({});
-
-  if (!record) {
-    return (
-      <p
-        style={{
-          padding: "20px",
-          color: "rgba(23,23,23,.55)",
-          fontSize: 13,
-        }}
-      >
-        No order selected.
-      </p>
-    );
-  }
-
-  const items = Array.isArray(record.items)
-    ? (record.items as unknown as AdminOrderItem[])
-    : [];
-
-  const shipping = (record.shipping ??
-    {}) as AdminOrderShipping;
-
-  const currentStatus = String(record.status ?? "pending");
-
-  const createdAt = record.createdAt
-    ? new Date(String(record.createdAt)).toLocaleDateString(
-        "en-LK",
-        { day: "2-digit", month: "long", year: "numeric" }
-      )
-    : "—";
-
-  const total = Number(record.total ?? 0);
-
-  const formatRs = (n: number) =>
-    `Rs. ${n.toLocaleString("en-IN", {
-      maximumFractionDigits: 0,
-    })}`;
-
-
-
-  return (
-    <div
-      style={{
-        display: "flex",
-        flexDirection: "column",
-        gap: 20,
-        padding: "4px 0",
-      }}
-    >
-
-      {/* ─── ORDER META ─── */}
-      <div
-        style={{
-          display: "grid",
-          gridTemplateColumns: "1fr 1fr",
-          gap: 14,
-        }}
-      >
-        {/* Left: ID + date */}
-        <div
-          style={{
-            padding: "18px 20px",
-            border: "1px solid rgba(23,23,23,.1)",
-            borderRadius: 16,
-            background: "rgba(255,254,250,.8)",
-          }}
-        >
-          <p
-            style={{
-              margin: "0 0 6px",
-              fontSize: 9,
-              fontWeight: 800,
-              letterSpacing: ".16em",
-              textTransform: "uppercase",
-              color: "#806537",
-            }}
-          >
-            Order reference
-          </p>
-          <p
-            style={{
-              margin: "0 0 8px",
-              fontFamily: "monospace",
-              fontSize: 12,
-              wordBreak: "break-all",
-              color: "#171717",
-            }}
-          >
-            {String(record._id)}
-          </p>
-          <p
-            style={{
-              margin: 0,
-              fontSize: 12,
-              color: "rgba(23,23,23,.55)",
-            }}
-          >
-            Placed {createdAt}
-          </p>
-        </div>
-
-        {/* Right: total + current status badge */}
-        <div
-          style={{
-            padding: "18px 20px",
-            border: "1px solid rgba(23,23,23,.1)",
-            borderRadius: 16,
-            background: "rgba(255,254,250,.8)",
-          }}
-        >
-          <p
-            style={{
-              margin: "0 0 6px",
-              fontSize: 9,
-              fontWeight: 800,
-              letterSpacing: ".16em",
-              textTransform: "uppercase",
-              color: "#806537",
-            }}
-          >
-            Order total
-          </p>
-          <p
-            style={{
-              margin: "0 0 10px",
-              fontFamily:
-                'Georgia, "Times New Roman", serif',
-              fontSize: 26,
-              fontWeight: 400,
-            }}
-          >
-            {formatRs(total)}
-          </p>
-          <span
-            style={{
-              display: "inline-flex",
-              alignItems: "center",
-              padding: "5px 10px",
-              borderRadius: 999,
-              fontSize: 11,
-              fontWeight: 700,
-              textTransform: "capitalize" as const,
-              background:
-                currentStatus === "pending"
-                  ? "rgba(170,137,83,.14)"
-                  : currentStatus === "paid" ||
-                    currentStatus === "delivered" ||
-                    currentStatus === "completed"
-                  ? "rgba(79,121,72,.14)"
-                  : currentStatus === "shipped" ||
-                    currentStatus === "processing"
-                  ? "rgba(52,98,150,.12)"
-                  : "rgba(160,66,50,.12)",
-              color:
-                currentStatus === "pending"
-                  ? "#7a5518"
-                  : currentStatus === "paid" ||
-                    currentStatus === "delivered" ||
-                    currentStatus === "completed"
-                  ? "#3c6a35"
-                  : currentStatus === "shipped" ||
-                    currentStatus === "processing"
-                  ? "#2c5584"
-                  : "#9a3a2c",
-            }}
-          >
-            {currentStatus}
-          </span>
-        </div>
-      </div>
-
-      {/* ─── STATUS EDITOR ─── */}
-      <div
-        style={{
-          padding: "20px",
-          border: "1px solid rgba(170,137,83,.28)",
-          borderRadius: 16,
-          background: "rgba(255,250,240,.7)",
-        }}
-      >
-        <p
-          style={{
-            margin: "0 0 12px",
-            fontSize: 9,
-            fontWeight: 800,
-            letterSpacing: ".16em",
-            textTransform: "uppercase",
-            color: "#806537",
-          }}
-        >
-          Change order status
-        </p>
-
-        <p
-          style={{
-            margin: "0 0 14px",
-            fontSize: 12,
-            color: "rgba(23,23,23,.55)",
-            lineHeight: 1.55,
-          }}
-        >
-          Select the new status and click{" "}
-          <strong>Save status</strong>. The customer
-          will see this updated on their orders page.
-        </p>
-
-        <select
-          name="status"
-          defaultValue={currentStatus}
-          style={{
-            width: "100%",
-            minHeight: 48,
-            padding: "0 14px",
-            border: "1px solid rgba(23,23,23,.17)",
-            borderRadius: 12,
-            background: "#fff",
-            color: "#171717",
-            fontSize: 14,
-            outline: "none",
-          }}
-        >
-          <option value="pending">Pending</option>
-          <option value="processing">Processing</option>
-          <option value="paid">Paid</option>
-          <option value="shipped">Shipped</option>
-          <option value="delivered">Delivered</option>
-          <option value="completed">Completed</option>
-          <option value="cancelled">Cancelled</option>
-        </select>
-      </div>
-
-      {/* ─── SHIPPING ADDRESS ─── */}
-      {(shipping.name ||
-        shipping.address ||
-        shipping.email) && (
-        <div
-          style={{
-            padding: "20px",
-            border: "1px solid rgba(23,23,23,.1)",
-            borderRadius: 16,
-            background: "rgba(255,254,250,.8)",
-          }}
-        >
-          <p
-            style={{
-              margin: "0 0 12px",
-              fontSize: 9,
-              fontWeight: 800,
-              letterSpacing: ".16em",
-              textTransform: "uppercase",
-              color: "#806537",
-            }}
-          >
-            Delivery address
-          </p>
-
-          <div
-            style={{
-              display: "grid",
-              gridTemplateColumns: "1fr 1fr",
-              gap: "6px 20px",
-              fontSize: 13,
-              lineHeight: 1.7,
-            }}
-          >
-            {shipping.name && (
-              <div>
-                <span
-                  style={{
-                    fontSize: 10,
-                    fontWeight: 700,
-                    color: "rgba(23,23,23,.45)",
-                    textTransform: "uppercase",
-                    letterSpacing: ".1em",
-                  }}
-                >
-                  Name
-                </span>
-                <br />
-                <strong>{shipping.name}</strong>
-              </div>
-            )}
-
-            {shipping.email && (
-              <div>
-                <span
-                  style={{
-                    fontSize: 10,
-                    fontWeight: 700,
-                    color: "rgba(23,23,23,.45)",
-                    textTransform: "uppercase",
-                    letterSpacing: ".1em",
-                  }}
-                >
-                  Email
-                </span>
-                <br />
-                {shipping.email}
-              </div>
-            )}
-
-            {shipping.phone && (
-              <div>
-                <span
-                  style={{
-                    fontSize: 10,
-                    fontWeight: 700,
-                    color: "rgba(23,23,23,.45)",
-                    textTransform: "uppercase",
-                    letterSpacing: ".1em",
-                  }}
-                >
-                  Phone
-                </span>
-                <br />
-                {shipping.phone}
-              </div>
-            )}
-
-            {(shipping.address ||
-              shipping.city) && (
-              <div style={{ gridColumn: "1 / -1" }}>
-                <span
-                  style={{
-                    fontSize: 10,
-                    fontWeight: 700,
-                    color: "rgba(23,23,23,.45)",
-                    textTransform: "uppercase",
-                    letterSpacing: ".1em",
-                  }}
-                >
-                  Address
-                </span>
-                <br />
-                {shipping.address}
-                {shipping.address && shipping.city
-                  ? ", "
-                  : ""}
-                {shipping.city}
-                {shipping.postalCode
-                  ? ` ${shipping.postalCode}`
-                  : ""}
-              </div>
-            )}
-          </div>
-        </div>
-      )}
-
-      {/* ─── ORDER ITEMS ─── */}
-      {items.length > 0 && (
-        <div>
-          <p
-            style={{
-              margin: "0 0 10px",
-              fontSize: 9,
-              fontWeight: 800,
-              letterSpacing: ".16em",
-              textTransform: "uppercase",
-              color: "#806537",
-            }}
-          >
-            Items ({items.length})
-          </p>
-
-          <div
-            style={{
-              display: "flex",
-              flexDirection: "column",
-              gap: 8,
-            }}
-          >
-            {items.map((item, idx) => (
-              <div
-                key={idx}
-                style={{
-                  display: "grid",
-                  gridTemplateColumns: "60px 1fr auto",
-                  alignItems: "center",
-                  gap: 14,
-                  padding: "12px 14px",
-                  border: "1px solid rgba(23,23,23,.08)",
-                  borderRadius: 14,
-                  background: "rgba(255,254,250,.85)",
-                }}
-              >
-                {/* Thumbnail */}
-                <div
-                  style={{
-                    width: 60,
-                    height: 60,
-                    borderRadius: 10,
-                    overflow: "hidden",
-                    background:
-                      "radial-gradient(circle at 50% 45%,#fff,#f4f0e8 60%,#e9e3d7)",
-                    flexShrink: 0,
-                  }}
-                >
-                  {item.imageUrl &&
-                  !imgErrors[idx] ? (
-                    <img
-                      src={item.imageUrl}
-                      alt={item.name}
-                      width={60}
-                      height={60}
-                      style={{
-                        width: "100%",
-                        height: "100%",
-                        objectFit: "cover",
-                        display: "block",
-                      }}
-                      onError={() =>
-                        setImgErrors((e) => ({
-                          ...e,
-                          [idx]: true,
-                        }))
-                      }
-                    />
-                  ) : (
-                    <div
-                      style={{
-                        width: "100%",
-                        height: "100%",
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        fontFamily: "Georgia,serif",
-                        color: "#aa8953",
-                        fontSize: 20,
-                      }}
-                    >
-                      K
-                    </div>
-                  )}
-                </div>
-
-                {/* Name + meta */}
-                <div style={{ minWidth: 0 }}>
-                  <p
-                    style={{
-                      margin: "0 0 4px",
-                      fontFamily:
-                        'Georgia, "Times New Roman", serif',
-                      fontSize: 15,
-                      fontWeight: 400,
-                      whiteSpace: "nowrap",
-                      overflow: "hidden",
-                      textOverflow: "ellipsis",
-                    }}
-                  >
-                    {item.name}
-                  </p>
-                  <p
-                    style={{
-                      margin: 0,
-                      fontSize: 11,
-                      color: "rgba(23,23,23,.5)",
-                    }}
-                  >
-                    Qty {item.quantity}
-                    {item.size
-                      ? ` · ${item.size}`
-                      : ""}
-                    {item.price !== undefined
-                      ? ` · ${formatRs(item.price)} each`
-                      : ""}
-                  </p>
-                </div>
-
-                {/* Line total */}
-                <div style={{ textAlign: "right" }}>
-                  <strong
-                    style={{ fontSize: 13 }}
-                  >
-                    {item.price !== undefined
-                      ? formatRs(
-                          item.price *
-                            item.quantity
-                        )
-                      : "—"}
-                  </strong>
-                </div>
-              </div>
-            ))}
-          </div>
-
-          {/* Grand total row */}
-          <div
-            style={{
-              display: "flex",
-              justifyContent: "flex-end",
-              alignItems: "center",
-              gap: 16,
-              marginTop: 10,
-              paddingTop: 12,
-              borderTop:
-                "1px solid rgba(23,23,23,.1)",
-              fontSize: 13,
-            }}
-          >
-            <span
-              style={{ color: "rgba(23,23,23,.5)" }}
-            >
-              Order total
-            </span>
-            <strong
-              style={{
-                fontFamily:
-                  'Georgia, "Times New Roman", serif',
-                fontSize: 20,
-                fontWeight: 400,
-              }}
-            >
-              {formatRs(total)}
-            </strong>
-          </div>
-        </div>
-      )}
-
     </div>
   );
 }
@@ -5295,9 +4839,36 @@ function splitNotes(value: string) {
 }
 
 function arrayToText(value: unknown) {
-  return Array.isArray(value)
-    ? value.map(String).join(", ")
-    : "";
+  return Array.isArray(value) ? value.map(String).join(", ") : "";
+}
+
+/* ---------- order helpers ---------- */
+
+function orderNumber(record: RecordItem) {
+  return String(record._id).slice(-6).toUpperCase();
+}
+
+function orderItemCount(record: RecordItem) {
+  if (Array.isArray(record.items)) {
+    return (record.items as Array<{ quantity?: number }>).reduce(
+      (sum, item) => sum + Number(item?.quantity ?? 1),
+      0
+    );
+  }
+
+  return Number(record.items ?? 1);
+}
+
+function orderCustomer(record: RecordItem) {
+  const shipping = (record.shipping ?? {}) as Record<string, unknown>;
+
+  const name = String(
+    shipping.name ?? record.customerName ?? record.customer ?? "Guest"
+  );
+
+  const contact = String(shipping.phone ?? shipping.email ?? "");
+
+  return { name, contact };
 }
 
 /* =========================================================
@@ -5315,7 +4886,12 @@ function Settings({
     <div className="settings-page">
       <section className="settings-card profile-card">
         <div className="large-avatar">
-          {profile.imageUrl ? <img src={profile.imageUrl} alt="Admin profile" /> : profile.name.slice(0, 1).toUpperCase()}
+          {profile.imageUrl ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={profile.imageUrl} alt="Admin profile" />
+          ) : (
+            profile.name.slice(0, 1).toUpperCase()
+          )}
         </div>
         <h2>{profile.name}</h2>
         <p>{profile.email}</p>
@@ -5327,19 +4903,57 @@ function Settings({
           <h3>Profile settings</h3>
         </div>
         <div className="form-grid-2">
-          <label className="form-field"><span>Admin name *</span><input name="name" defaultValue={profile.name} required autoComplete="name" /></label>
-          <label className="form-field"><span>Email address *</span><input name="email" type="email" defaultValue={profile.email} required autoComplete="email" /></label>
-          <label className="form-field full-field"><span>Profile image URL</span><input name="imageUrl" defaultValue={profile.imageUrl ?? ""} placeholder="https://..." type="url" /></label>
-          <label className="form-field full-field"><span>New password</span><input name="password" type="password" minLength={6} autoComplete="new-password" placeholder="Leave blank to keep current password" /></label>
+          <label className="form-field">
+            <span>Admin name *</span>
+            <input
+              name="name"
+              defaultValue={profile.name}
+              required
+              autoComplete="name"
+            />
+          </label>
+          <label className="form-field">
+            <span>Email address *</span>
+            <input
+              name="email"
+              type="email"
+              defaultValue={profile.email}
+              required
+              autoComplete="email"
+            />
+          </label>
+          <label className="form-field full-field">
+            <span>Profile image URL</span>
+            <input
+              name="imageUrl"
+              defaultValue={profile.imageUrl ?? ""}
+              placeholder="https://..."
+              type="url"
+            />
+          </label>
+          <label className="form-field full-field">
+            <span>New password</span>
+            <input
+              name="password"
+              type="password"
+              minLength={6}
+              autoComplete="new-password"
+              placeholder="Leave blank to keep current password"
+            />
+          </label>
         </div>
-        <div className="settings-actions"><button className="primary-action" type="submit">Save profile</button></div>
+        <div className="settings-actions">
+          <button className="primary-action" type="submit">
+            Save profile
+          </button>
+        </div>
       </form>
     </div>
   );
 }
 
 /* =========================================================
-   DATE FORMATTER
+   DATE FORMATTERS
 ========================================================= */
 
 function formatDate(value: unknown) {
@@ -5347,24 +4961,35 @@ function formatDate(value: unknown) {
     return "—";
   }
 
-  const date = new Date(
-    String(value)
-  );
+  const date = new Date(String(value));
 
-  if (
-    Number.isNaN(
-      date.valueOf()
-    )
-  ) {
+  if (Number.isNaN(date.valueOf())) {
     return "—";
   }
 
-  return date.toLocaleDateString(
-    "en-IN",
-    {
-      day: "2-digit",
-      month: "short",
-      year: "numeric",
-    }
-  );
+  return date.toLocaleDateString("en-IN", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+  });
+}
+
+function formatDateTime(value: unknown) {
+  if (!value) {
+    return "—";
+  }
+
+  const date = new Date(String(value));
+
+  if (Number.isNaN(date.valueOf())) {
+    return "—";
+  }
+
+  return date.toLocaleString("en-IN", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
 }
