@@ -277,6 +277,9 @@ export default function OrdersPage() {
 
       setMessage("");
 
+      // Show loading toast only on initial load (not refresh)
+      const toastId = !showRefresh ? toast.loading("Loading your orders...") : undefined;
+
       const response = await fetch("/api/orders", {
         method: "GET",
         cache: "no-store",
@@ -298,6 +301,11 @@ export default function OrdersPage() {
       if (!fetchedOrders.length) {
         setMessage("Your first Kyro order is waiting to be discovered.");
       }
+
+      // Dismiss loading toast and show success
+      if (toastId) {
+        toast.dismiss(toastId);
+      }
     } catch (error) {
       const errorMessage =
         error instanceof Error
@@ -305,7 +313,7 @@ export default function OrdersPage() {
           : "Unable to load your orders.";
 
       setMessage(errorMessage);
-      toast.error(errorMessage);
+      toast.error(errorMessage, { duration: 6000 });
     } finally {
       setLoading(false);
       setRefreshing(false);
