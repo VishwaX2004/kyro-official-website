@@ -1,0 +1,26 @@
+{
+  "verdict": "CHANGES_REQUESTED",
+  "findings": [
+    {
+      "issue": "Account page inline validation toasts are duplicative",
+      "description": "The account page (updateProfile, updatePassword) shows inline error messages *and* error toasts. For validation errors (name too short, email missing, passwords don't match), consider removing the separate toast call since the inline message already communicates the issue, or repurpose the toast for success-only to reduce noise."
+    },
+    {
+      "issue": "Missing loading toast in cart.placeOrder",
+      "description": "The order placement does show a loading toast as specified, but the loading state flag is set after the toast, not before. While it works, the pattern should initialize the loading state first to ensure button is disabled immediately on submit."
+    },
+    {
+      "issue": "Search suggestions dropdown has no error toast",
+      "description": "When the search API call fails in StoreHeader.tsx (fetchSuggestions), the error is silently caught and suggestions empty. While this is a minor UX issue (search is not a critical action), an error toast would help users understand why suggestions disappeared."
+    },
+    {
+      "issue": "Contact form missing loading state in button",
+      "description": "ContactForm.tsx shows 'Sending message...' in the form, but the submit button does not have visual disable/loading state (no disabled prop based on sending state). The button should be disabled during submission to prevent double-submit."
+    },
+    {
+      "issue": "Orders page loading toast not used",
+      "description": "app/(store)/orders/page.tsx calls toast.error() on fetch failure but does not use a loading toast on initial fetch. The pattern should be: toast.loading() on mount, then dismiss + success/error on completion for consistency. Currently only error is toasted, which breaks the established pattern."
+    }
+  ],
+  "reviewDoc": "d:\\Kyro-Web\\.agents\\tasks\\toast-review.md"
+}
