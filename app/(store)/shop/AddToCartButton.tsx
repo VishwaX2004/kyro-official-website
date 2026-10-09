@@ -14,8 +14,12 @@ type ProductProps = {
 
 export default function AddToCartButton({ product }: { product: ProductProps }) {
   const [added, setAdded] = useState(false);
+  const [isAdding, setIsAdding] = useState(false);
 
   function handleAdd() {
+    if (isAdding) return;
+
+    setIsAdding(true);
     try {
       const cart = readCart();
       const existing = cart.find(item => item.productId === product.id);
@@ -34,16 +38,21 @@ export default function AddToCartButton({ product }: { product: ProductProps }) 
       saveCart(cart);
 
       setAdded(true);
-      setTimeout(() => setAdded(false), 2000);
       toast.success(`${product.name} added to cart.`);
+      setTimeout(() => {
+        setAdded(false);
+        setIsAdding(false);
+      }, 2000);
     } catch {
       toast.error("Could not add to cart. Please try again.");
+      setIsAdding(false);
     }
   }
 
   return (
     <button
       onClick={handleAdd}
+      disabled={isAdding}
       className="submit-button"
       style={{
         width: "100%",
@@ -51,11 +60,12 @@ export default function AddToCartButton({ product }: { product: ProductProps }) 
         border: "none",
         borderRadius: "8px",
         fontWeight: "bold",
-        cursor: "pointer",
+        cursor: isAdding ? "not-allowed" : "pointer",
+        opacity: isAdding ? 0.6 : 1,
         transition: "all 0.2s ease"
       }}
     >
-      {added ? "Added!" : "Add to Cart"}
+      {isAdding ? "Adding..." : added ? "Added!" : "Add to Cart"}
     </button>
   );
 }

@@ -27,6 +27,9 @@ export default function CartPage() {
   const [removingId, setRemovingId] =
     useState<string | null>(null);
 
+  const [loading, setLoading] =
+    useState(false);
+
   const total = useMemo(
     () =>
       items.reduce(
@@ -152,6 +155,8 @@ export default function CartPage() {
   ) {
     event.preventDefault();
 
+    if (loading) return;
+
     const form = event.currentTarget;
 
     const shipping =
@@ -175,6 +180,10 @@ export default function CartPage() {
 
       return;
     }
+
+    setLoading(true);
+
+    const toastId = toast.loading("Processing your order...");
 
     try {
       const response = await fetch(
@@ -207,8 +216,10 @@ export default function CartPage() {
 
         setMessage(errMsg);
 
-        toast.error(errMsg);
+        toast.dismiss(toastId);
+        toast.error(errMsg, { duration: 6000 });
 
+        setLoading(false);
         return;
       }
 
@@ -229,6 +240,7 @@ export default function CartPage() {
 
       setMessage(successMsg);
 
+      toast.dismiss(toastId);
       toast.success(successMsg);
     } catch {
       const errMsg =
@@ -236,7 +248,10 @@ export default function CartPage() {
 
       setMessage(errMsg);
 
-      toast.error(errMsg);
+      toast.dismiss(toastId);
+      toast.error(errMsg, { duration: 6000 });
+    } finally {
+      setLoading(false);
     }
   }
 
@@ -2755,8 +2770,9 @@ export default function CartPage() {
             <button
               className="checkout-submit"
               type="submit"
+              disabled={loading}
             >
-              Place order →
+              {loading ? "Processing..." : "Place order →"}
             </button>
 
           </form>

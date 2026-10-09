@@ -10,6 +10,7 @@ import {
 } from "react";
 import Link from "next/link";
 import Image from "next/image";
+import toast from "react-hot-toast";
 
 import MediaUpload from "@/app/components/MediaUpload";
 
@@ -724,6 +725,14 @@ export default function AdminPage() {
           : "Fragrance added to the collection."
       );
 
+      toast.success(
+        collection === "orders"
+          ? `Order status updated to "${payload.status}".`
+          : editing
+          ? "Fragrance updated successfully."
+          : "Fragrance added to the collection."
+      );
+
       setShowForm(false);
 
       setEditing(null);
@@ -742,6 +751,12 @@ export default function AdminPage() {
         error instanceof Error
           ? error.message
           : "Unable to save record."
+      );
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "Unable to save record.",
+        { duration: 6000 }
       );
     }
   }
@@ -792,11 +807,18 @@ export default function AdminPage() {
       }));
 
       setNotice("Record removed.");
+      toast.success("Record removed.");
     } catch (error) {
       setNotice(
         error instanceof Error
           ? error.message
           : "Unable to remove that record."
+      );
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "Unable to remove that record.",
+        { duration: 6000 }
       );
     }
   }
@@ -841,8 +863,13 @@ export default function AdminPage() {
       setProfile({ name: next.name, email: next.email, imageUrl: next.imageUrl });
       form.reset();
       setNotice("Admin profile updated successfully.");
+      toast.success("Admin profile updated successfully.");
     } catch (error) {
       setNotice(error instanceof Error ? error.message : "Unable to save profile.");
+      toast.error(
+        error instanceof Error ? error.message : "Unable to save profile.",
+        { duration: 6000 }
+      );
     }
   }
 
