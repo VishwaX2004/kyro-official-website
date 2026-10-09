@@ -95,13 +95,11 @@ export default function AccountPage() {
 
       if (name.length < 2) {
         setError("Display name must contain at least 2 characters.");
-        toast.error("Display name must contain at least 2 characters.");
         return;
       }
 
       if (!email) {
         setError("Please enter your email address.");
-        toast.error("Please enter your email address.");
         return;
       }
 
@@ -184,21 +182,16 @@ export default function AccountPage() {
 
       if (!currentPassword) {
         setError("Please enter your current password.");
-        toast.error("Please enter your current password.");
         return;
       }
 
       if (newPassword.length < 8) {
         setError("New password must contain at least 8 characters.");
-        toast.error("New password must contain at least 8 characters.");
         return;
       }
 
       if (currentPassword === newPassword) {
         setError(
-          "Your new password must be different from your current password."
-        );
-        toast.error(
           "Your new password must be different from your current password."
         );
         return;
