@@ -25,6 +25,7 @@ type CollectionResource = "users" | "products" | "orders";
 type Profile = {
   name: string;
   email: string;
+  imageUrl?: string;
 };
 
 /* =========================================================
@@ -210,6 +211,7 @@ export default function AdminPage() {
   const [profile, setProfile] = useState<Profile>({
     name: "Kyro Admin",
     email: "admin@kyroparfums.com",
+    imageUrl: "",
   });
 
   const collection: CollectionResource | null =
@@ -807,21 +809,41 @@ export default function AdminPage() {
     event: FormEvent<HTMLFormElement>
   ) {
     event.preventDefault();
-
-    const next = Object.fromEntries(
-      new FormData(
-        event.currentTarget
-      ).entries()
-    ) as {
-      name: string;
-      email: string;
+    const form = event.currentTarget;
+    const formData = new FormData(form);
+    const next = {
+      name: String(formData.get("name") ?? "").trim(),
+      email: String(formData.get("email") ?? "").trim(),
+      imageUrl: String(formData.get("imageUrl") ?? "").trim(),
+      password: String(formData.get("password") ?? ""),
     };
-
-    setProfile(next);
-
-    setNotice(
-      "Your preferences have been saved."
-    );
+    if (!next.name || !next.email) {
+      setNotice("Enter your name and email address.");
+      return;
+    }
+    if (next.password && next.password.length < 6) {
+      setNotice("Password must contain at least 6 characters.");
+      return;
+    }
+    try {
+      const response = await fetch("/api/account/profile", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: next.name,
+          email: next.email,
+          imageUrl: next.imageUrl,
+          ...(next.password ? { password: next.password } : {}),
+        }),
+      });
+      const data = (await response.json().catch(() => ({}))) as { message?: string };
+      if (!response.ok) throw new Error(data.message || "Unable to save profile.");
+      setProfile({ name: next.name, email: next.email, imageUrl: next.imageUrl });
+      form.reset();
+      setNotice("Admin profile updated successfully.");
+    } catch (error) {
+      setNotice(error instanceof Error ? error.message : "Unable to save profile.");
+    }
   }
 
   const titles: Record<
@@ -2712,6 +2734,66 @@ body{
   }
 
 }
+
+/* Clean, readable admin UI refinements */
+.kyro-admin { font-size: 15px; }
+.kyro-admin .admin-content { padding-top: 30px; }
+.kyro-admin .admin-header h1 { font-weight: 700; letter-spacing: -.035em; }
+.kyro-admin .header-subtitle { font-size: 15px; color: #57534e; }
+.collection-toolbar { margin-bottom: 18px; }
+.search-box { box-shadow: 0 4px 14px rgba(23,23,23,.035); }
+.search-box input { font-size: 15px; color: #171717; }
+.primary-action { min-height: 46px; font-size: 14px; padding: 0 20px; }
+.table-card { border-radius: 18px; box-shadow: 0 12px 35px rgba(23,23,23,.045); }
+.table-card table { min-width: 760px; }
+.table-card th { padding: 17px 20px; color: #514b42; font-size: 12px; font-weight: 800; letter-spacing: .045em; }
+.table-card td { padding: 18px 20px; color: #292524; font-size: 14px; line-height: 1.45; }
+.table-card tbody tr { transition: background .18s ease; }
+.table-card tbody tr:hover { background: #fbf8f0; }
+.table-card td strong { color: #171717; font-size: 15px; font-weight: 750; }
+.table-card td small { display: block; margin-top: 4px; color: #625d55; font-size: 13px; }
+.cell-flex { gap: 14px; }
+.table-avatar { width: 42px; height: 42px; border-radius: 14px; font-size: 16px; font-weight: 800; }
+.product-thumb { width: 52px; height: 60px; flex-basis: 52px; border: 1px solid rgba(23,23,23,.08); }
+.row-actions { display: flex; align-items: center; justify-content: flex-end; gap: 8px; }
+.row-actions button.table-icon-action { display: inline-flex; align-items: center; justify-content: center; width: 38px; height: 38px; margin: 0; padding: 0; border: 1px solid #e7e1d6; border-radius: 12px; background: #fff; color: #292524; cursor: pointer; transition: background .18s, border-color .18s, transform .18s; }
+.row-actions button.table-icon-action:hover { transform: translateY(-1px); background: #f8f4eb; border-color: #cbb58d; }
+.row-actions button.table-icon-action svg { width: 17px; height: 17px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.row-actions button.delete-action { color: #b42318; border-color: #f0d6d3; }
+.row-actions button.delete-action:hover { background: #fff1f0; border-color: #e7aaa4; }
+.record-modal { width: min(900px, 100%); border-radius: 22px; }
+.record-modal-header-fixed { padding: 24px 28px 18px; }
+.record-modal-header-fixed h2 { font-family: inherit; font-size: clamp(25px, 3vw, 32px); font-weight: 800; letter-spacing: -.035em; }
+.record-modal-content { padding: 18px 24px 24px; }
+.form-section-card { padding: 20px; border-radius: 16px; }
+.form-section-heading { margin-bottom: 14px; align-items: center; }
+.form-section-heading h3 { margin: 0; font-family: inherit; font-size: 18px; font-weight: 800; letter-spacing: -.015em; }
+.form-section-heading p { display: none; }
+.form-section-number { display: none; }
+.form-field { gap: 6px; }
+.form-field > span, .field-mini-label, .check-group-title { color: #292524; font-size: 12px; font-weight: 750; letter-spacing: 0; text-transform: none; }
+.form-field input, .form-field select, .form-field textarea { min-height: 46px; border-color: #d9d4ca; border-radius: 10px; font-size: 15px; }
+.form-field input:focus, .form-field select:focus, .form-field textarea:focus { border-color: #9a7945; box-shadow: 0 0 0 3px rgba(154,121,69,.13); }
+.user-field-help, .image-manager-help { font-size: 12px; color: #57534e; }
+.simple-form-stack { display: grid; gap: 14px; }
+.simple-form-stack > label { display: flex; flex-direction: column; gap: 7px; color: #292524; font-size: 13px; font-weight: 750; }
+.simple-form-stack > label input, .simple-form-stack > label select { width: 100%; min-height: 46px; padding: 10px 12px; border: 1px solid #d9d4ca; border-radius: 10px; background: #fff; color: #171717; font: inherit; }
+.simple-form-stack > label input:focus, .simple-form-stack > label select:focus { outline: none; border-color: #9a7945; box-shadow: 0 0 0 3px rgba(154,121,69,.13); }
+.record-modal-footer { padding: 15px 24px; }
+.modal-cancel { min-height: 44px; font-size: 14px; }
+.settings-page { display: grid; grid-template-columns: minmax(240px,.72fr) minmax(0,1.28fr); gap: 18px; max-width: 1100px; margin: 26px auto 0; align-items: start; }
+.profile-card, .settings-form { border: 1px solid var(--kyro-line); border-radius: 20px; background: #fffefa; box-shadow: 0 12px 35px rgba(23,23,23,.045); }
+.profile-card { display: flex; flex-direction: column; align-items: flex-start; gap: 10px; padding: 28px; }
+.large-avatar { overflow: hidden; display: grid; place-items: center; width: 82px; height: 82px; margin-bottom: 10px; border-radius: 22px; background: #171717; color: #d0ad70; font-size: 30px; font-weight: 800; }
+.large-avatar img { width: 100%; height: 100%; object-fit: cover; }
+.profile-card h2 { margin: 0; font-family: inherit; font-size: 24px; font-weight: 800; overflow-wrap: anywhere; }
+.profile-card p { margin: 0; color: #57534e; overflow-wrap: anywhere; }
+.settings-form { gap: 20px; padding: 28px; }
+.settings-title h3 { margin: 7px 0 0; font-family: inherit; font-size: 24px; font-weight: 800; }
+.settings-form .form-grid-2 { gap: 16px; }
+.settings-actions { display: flex; justify-content: flex-end; }
+@media(max-width:850px) { .settings-page { grid-template-columns: 1fr; } .profile-card { flex-direction: row; flex-wrap: wrap; align-items: center; } .large-avatar { margin: 0 12px 0 0; } }
+@media(max-width:760px) { .record-modal { max-height: calc(100dvh - 20px); } .modal-backdrop { padding: 10px; } .record-modal-header-fixed { padding: 20px 18px 16px; } .record-modal-content { padding: 14px; } .form-section-card { padding: 15px; } .form-grid-2, .notes-grid { grid-template-columns: 1fr; } .settings-form { padding: 20px; } .settings-actions .primary-action { width: 100%; } }
           `,
         }}
       />
@@ -3334,22 +3416,22 @@ function Collection({
 
                       <button
                         type="button"
-                        onClick={() =>
-                          onEdit(record)
-                        }
+                        className="table-icon-action edit-action"
+                        onClick={() => onEdit(record)}
+                        aria-label={`Edit ${resource.slice(0, -1)}`}
+                        title="Edit"
                       >
-                        Edit
+                        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L8 18l-4 1 1-4Z"/></svg>
                       </button>
 
                       <button
                         type="button"
-                        onClick={() =>
-                          onDelete(
-                            record._id
-                          )
-                        }
+                        className="table-icon-action delete-action"
+                        onClick={() => onDelete(record._id)}
+                        aria-label={`Delete ${resource.slice(0, -1)}`}
+                        title="Delete"
                       >
-                        Delete
+                        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="m19 6-1 14H6L5 6"/><path d="M10 11v5M14 11v5"/></svg>
                       </button>
 
                     </td>
@@ -3533,31 +3615,9 @@ function RecordModal({
 
           <h2 id="modal-title">
             {editing
-              ? "Update your fragrance listing"
-              : `Add a ${
-                  collection ===
-                  "products"
-                    ? "new fragrance"
-                    : collection.slice(0, -1)
-                }`}
+              ? collection === "orders" ? "Update order status" : collection === "users" ? "Edit customer" : "Edit fragrance"
+              : collection === "products" ? "Add fragrance" : collection === "users" ? "Add customer" : "Add order"}
           </h2>
-
-          <p
-            style={{
-              marginTop: "9px",
-              maxWidth: "560px",
-              color:
-                "rgba(23,23,23,.62)",
-              fontSize: "13px",
-              lineHeight: 1.6,
-            }}
-          >
-            {isProduct
-              ? "Add the essentials first, upload as many photos as you need, then set your sizes and fragrance details."
-              : collection === "users"
-              ? "Create or update a complete customer account with profile and contact information."
-              : "Add and maintain the order information used by your store."}
-          </p>
 
         </div>
 
@@ -4475,7 +4535,7 @@ function RecordModal({
             collection === "users" ? (
               <div className="simple-form-stack user-form-stack">
                 <section className="form-section-card">
-                  <div className="form-section-heading"><div><span className="admin-kicker">01 / ACCOUNT</span><h3>Customer account</h3><p>Create the customer's login and basic account information.</p></div><span className="form-section-number">01</span></div>
+                  <div className="form-section-heading"><h3>Customer details</h3></div>
                   <div className="form-grid-2">
                     <label className="form-field"><span>Full name *</span><input name="name" defaultValue={String(editing?.name ?? "")} required autoComplete="name" placeholder="e.g. Kasun Perera" /></label>
                     <label className="form-field"><span>Username *</span><input name="username" defaultValue={String(editing?.username ?? "")} required autoComplete="username" placeholder="e.g. kasun" /></label>
@@ -4485,17 +4545,13 @@ function RecordModal({
                   </div>
                 </section>
                 <section className="form-section-card">
-                  <div className="form-section-heading"><div><span className="admin-kicker">02 / PROFILE</span><h3>Customer profile</h3><p>Add the profile image, phone number and delivery/contact address.</p></div><span className="form-section-number">02</span></div>
+                  <div className="form-section-heading"><h3>Contact details</h3></div>
                   <div className="user-profile-grid">
                     <div className="user-image-field"><MediaUpload name="imageUrl" initialUrl={String(editing?.imageUrl ?? "")} /></div>
                     <div className="user-contact-fields"><label className="form-field"><span>Phone number</span><input name="phone" type="tel" defaultValue={String(editing?.phone ?? "")} autoComplete="tel" placeholder="+94771234567" /></label><label className="form-field"><span>Address</span><textarea name="address" rows={5} defaultValue={String(editing?.address ?? "")} autoComplete="street-address" placeholder="Colombo, Sri Lanka" /></label></div>
                   </div>
                 </section>
-                <section className="form-section-card">
-                  <div className="form-section-heading"><div><span className="admin-kicker">03 / RECORD</span><h3>Account timestamps</h3><p>These fields are generated automatically. Existing created dates are preserved when editing.</p></div><span className="form-section-number">03</span></div>
-                  <div className="form-grid-2"><label className="form-field"><span>Created at</span><input value={editing?.createdAt ? new Date(String(editing.createdAt)).toLocaleString() : "Generated when saved"} readOnly /></label><label className="form-field"><span>Updated at</span><input value="Generated automatically when saved" readOnly /></label></div>
-                  <input type="hidden" name="createdAt" value={editing?.createdAt ? String(editing.createdAt) : new Date().toISOString()} readOnly />
-                </section>
+                <input type="hidden" name="createdAt" value={editing?.createdAt ? String(editing.createdAt) : new Date().toISOString()} readOnly />
               </div>
             ) : collection === "orders" ? (
 
@@ -5272,97 +5328,31 @@ function Settings({
   onSave,
 }: {
   profile: Profile;
-  onSave: (
-    event: FormEvent<HTMLFormElement>
-  ) => void;
+  onSave: (event: FormEvent<HTMLFormElement>) => void;
 }) {
   return (
     <div className="settings-page">
-
-      <div className="settings-card profile-card">
-
+      <section className="settings-card profile-card">
         <div className="large-avatar">
-          {profile.name.slice(0, 1)}
+          {profile.imageUrl ? <img src={profile.imageUrl} alt="Admin profile" /> : profile.name.slice(0, 1).toUpperCase()}
         </div>
-
-        <span className="admin-kicker">
-          YOUR PROFILE
-        </span>
-
-        <h2>
-          {profile.name}
-        </h2>
-
-        <p>
-          {profile.email}
-        </p>
-
-        <span className="tag">
-          Administrator
-        </span>
-
-      </div>
-
-      <form
-        className="settings-card settings-form"
-        onSubmit={onSave}
-      >
-
-        <div>
-
-          <span className="admin-kicker">
-            ACCOUNT DETAILS
-          </span>
-
-          <h3>
-            Personal information
-          </h3>
-
-          <p>
-            Update the details shown in
-            your admin workspace.
-          </p>
-
+        <h2>{profile.name}</h2>
+        <p>{profile.email}</p>
+        <span className="tag">Administrator</span>
+      </section>
+      <form className="settings-card settings-form" onSubmit={onSave}>
+        <div className="settings-title">
+          <span className="admin-kicker">ADMIN ACCOUNT</span>
+          <h3>Profile settings</h3>
         </div>
-
-        <label>
-
-          Display name
-
-          <input
-            name="name"
-            defaultValue={
-              profile.name
-            }
-            required
-          />
-
-        </label>
-
-        <label>
-
-          Email address
-
-          <input
-            name="email"
-            type="email"
-            defaultValue={
-              profile.email
-            }
-            required
-          />
-
-        </label>
-
-        <button
-          className="primary-action"
-          type="submit"
-        >
-          Save preferences
-        </button>
-
+        <div className="form-grid-2">
+          <label className="form-field"><span>Admin name *</span><input name="name" defaultValue={profile.name} required autoComplete="name" /></label>
+          <label className="form-field"><span>Email address *</span><input name="email" type="email" defaultValue={profile.email} required autoComplete="email" /></label>
+          <label className="form-field full-field"><span>Profile image URL</span><input name="imageUrl" defaultValue={profile.imageUrl ?? ""} placeholder="https://..." type="url" /></label>
+          <label className="form-field full-field"><span>New password</span><input name="password" type="password" minLength={6} autoComplete="new-password" placeholder="Leave blank to keep current password" /></label>
+        </div>
+        <div className="settings-actions"><button className="primary-action" type="submit">Save profile</button></div>
       </form>
-
     </div>
   );
 }
