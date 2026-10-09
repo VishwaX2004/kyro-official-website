@@ -2821,6 +2821,22 @@ body{
 .settings-actions { display: flex; justify-content: flex-end; }
 @media(max-width:850px) { .settings-page { grid-template-columns: 1fr; } .profile-card { flex-direction: row; flex-wrap: wrap; align-items: center; } .large-avatar { margin: 0 12px 0 0; } }
 @media(max-width:760px) { .record-modal { max-height: calc(100dvh - 20px); } .modal-backdrop { padding: 10px; } .record-modal-header-fixed { padding: 20px 18px 16px; } .record-modal-content { padding: 14px; } .form-section-card { padding: 15px; } .form-grid-2, .notes-grid { grid-template-columns: 1fr; } .settings-form { padding: 20px; } .settings-actions .primary-action { width: 100%; } }
+
+/* PRODUCTS TABLE — clear 5ml / 10ml columns */
+.table-card table.products-table { min-width: 860px; }
+.products-table .size-th { min-width: 190px; }
+.products-table .size-th small { display: block; margin-top: 4px; color: #6b655b; font-size: 11px; font-weight: 600; letter-spacing: 0; text-transform: none; }
+.size-badge { display: inline-flex; align-items: center; min-height: 26px; padding: 0 12px; border-radius: 999px; background: #171717; color: #d0ad70; font-size: 12px; font-weight: 800; letter-spacing: .04em; }
+.products-table td.size-td { vertical-align: top; padding-top: 20px; border-left: 1px dashed rgba(23,23,23,.1); }
+.products-table td:first-child { vertical-align: top; padding-top: 20px; }
+.size-cell { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; }
+.size-price-row { display: flex; align-items: center; gap: 8px; }
+.size-price { color: #171717; font-size: 17px; font-weight: 800; letter-spacing: -.01em; }
+.size-discount { display: inline-flex; align-items: center; min-height: 20px; padding: 0 7px; border-radius: 6px; background: rgba(143,109,54,.14); color: #6f5226; font-size: 11px; font-weight: 800; }
+.size-labelled { color: #8a847a; font-size: 12px; text-decoration: line-through; }
+.size-empty { display: inline-flex; align-items: center; min-height: 28px; padding: 0 12px; border: 1px dashed rgba(23,23,23,.2); border-radius: 999px; color: #8a847a; font-size: 12px; font-weight: 600; }
+.stock.warn { background: rgba(170,137,83,.18); color: #7a5518; }
+.stock.out { background: rgba(164,76,54,.12); color: #9a3f2a; }
           `,
         }}
       />
@@ -3028,6 +3044,87 @@ function Overview({
    COLLECTION
 ========================================================= */
 
+type DecantInfo = {
+  size: number;
+  price: number;
+  labelledPrice: number;
+  stock: number;
+};
+
+function getDecant(record: RecordItem, size: number): DecantInfo | null {
+  if (!Array.isArray(record.decants)) {
+    return null;
+  }
+
+  const found = (record.decants as Array<Record<string, unknown>>).find(
+    (item) => Number(item?.size) === size
+  );
+
+  if (!found) {
+    return null;
+  }
+
+  return {
+    size,
+    price: Number(found.price ?? 0),
+    labelledPrice: Number(found.labelledPrice ?? 0),
+    stock: Number(found.stock ?? 0),
+  };
+}
+
+function formatRupees(value: number) {
+  return `Rs. ${value.toLocaleString("en-IN", {
+    maximumFractionDigits: 0,
+  })}`;
+}
+
+function SizeCell({ decant }: { decant: DecantInfo | null }) {
+  if (!decant) {
+    return <span className="size-empty">Not offered</span>;
+  }
+
+  const hasDiscount =
+    decant.labelledPrice > decant.price && decant.price > 0;
+
+  const discount = hasDiscount
+    ? Math.round((1 - decant.price / decant.labelledPrice) * 100)
+    : 0;
+
+  const stockClass =
+    decant.stock <= 0
+      ? "stock out"
+      : decant.stock < 5
+      ? "stock warn"
+      : "stock";
+
+  const stockText =
+    decant.stock <= 0
+      ? "Sold out"
+      : decant.stock < 5
+      ? `Only ${decant.stock} left`
+      : `${decant.stock} in stock`;
+
+  return (
+    <div className="size-cell">
+      <div className="size-price-row">
+        <span className="size-price">{formatRupees(decant.price)}</span>
+
+        {hasDiscount && (
+          <span className="size-discount">-{discount}%</span>
+        )}
+      </div>
+
+      {hasDiscount && (
+        <span className="size-labelled">
+          {formatRupees(decant.labelledPrice)}
+        </span>
+      )}
+
+      <span className={stockClass}>{stockText}</span>
+    </div>
+  );
+}
+
 function Collection({
   resource,
   records,
@@ -3047,6 +3144,9 @@ function Collection({
   onEdit: (record: RecordItem) => void;
   onDelete: (id: string) => void;
 }) {
+  const columnCount =
+    resource === "users" ? 4 : resource === "products" ? 4 : 5;
+
   return (
     <div className="collection">
 
@@ -3058,9 +3158,7 @@ function Collection({
 
           <input
             value={query}
-            onChange={(event) =>
-              setQuery(event.target.value)
-            }
+            onChange={(event) => setQuery(event.target.value)}
             placeholder={`Search ${resource}...`}
             aria-label={`Search ${resource}`}
           />
@@ -3086,7 +3184,11 @@ function Collection({
 
         <div className="table-scroll">
 
-          <table>
+          <table
+            className={
+              resource === "products" ? "products-table" : undefined
+            }
+          >
 
             <thead>
 
@@ -3104,9 +3206,17 @@ function Collection({
                 {resource === "products" && (
                   <>
                     <th>Fragrance</th>
-                    <th>Size</th>
-                    <th>Price</th>
-                    <th>Stock</th>
+
+                    <th className="size-th">
+                      <span className="size-badge">5 ml</span>
+                      <small>Price &amp; stock</small>
+                    </th>
+
+                    <th className="size-th">
+                      <span className="size-badge">10 ml</span>
+                      <small>Price &amp; stock</small>
+                    </th>
+
                     <th />
                   </>
                 )}
@@ -3129,21 +3239,14 @@ function Collection({
 
               {loading ? (
                 <tr>
-                  <td
-                    colSpan={5}
-                    className="empty-state"
-                  >
+                  <td colSpan={columnCount} className="empty-state">
                     Loading your collection...
                   </td>
                 </tr>
               ) : records.length === 0 ? (
                 <tr>
-                  <td
-                    colSpan={5}
-                    className="empty-state"
-                  >
-                    No records yet.
-                    Add your first one above.
+                  <td colSpan={columnCount} className="empty-state">
+                    No records yet. Add your first one above.
                   </td>
                 </tr>
               ) : (
@@ -3158,23 +3261,16 @@ function Collection({
                           <div className="cell-flex">
 
                             <span className="table-avatar">
-                              {String(
-                                record.name ?? "?"
-                              ).slice(0, 1)}
+                              {String(record.name ?? "?").slice(0, 1)}
                             </span>
 
                             <div>
                               <strong>
-                                {String(
-                                  record.name ??
-                                    "Unnamed"
-                                )}
+                                {String(record.name ?? "Unnamed")}
                               </strong>
 
                               <small>
-                                {String(
-                                  record.email ?? ""
-                                )}
+                                {String(record.email ?? "")}
                               </small>
                             </div>
 
@@ -3183,18 +3279,11 @@ function Collection({
 
                         <td>
                           <span className="tag">
-                            {String(
-                              record.role ??
-                                "customer"
-                            )}
+                            {String(record.role ?? "customer")}
                           </span>
                         </td>
 
-                        <td>
-                          {formatDate(
-                            record.createdAt
-                          )}
-                        </td>
+                        <td>{formatDate(record.createdAt)}</td>
                       </>
                     )}
 
@@ -3209,15 +3298,12 @@ function Collection({
                             <span
                               className="product-thumb"
                               style={
-                                Array.isArray(
-                                  record.images
-                                ) &&
+                                Array.isArray(record.images) &&
                                 record.images[0]
                                   ? {
-                                      backgroundImage:
-                                        `url("${String(
-                                          record.images[0]
-                                        )}")`,
+                                      backgroundImage: `url("${String(
+                                        record.images[0]
+                                      )}")`,
                                     }
                                   : undefined
                               }
@@ -3226,29 +3312,19 @@ function Collection({
                             <div>
 
                               <strong>
-                                {String(
-                                  record.name ??
-                                    "Unnamed scent"
-                                )}
+                                {String(record.name ?? "Unnamed scent")}
                               </strong>
 
                               <div>
-                                {String(
-                                  record.brand ??
-                                    "Independent"
-                                )}{" "}
+                                {String(record.brand ?? "Independent")}{" "}
                                 ·{" "}
                                 {String(
-                                  record.category ??
-                                    "Uncategorised"
+                                  record.category ?? "Uncategorised"
                                 )}
                               </div>
 
                               <small>
-                                {String(
-                                  record.type ??
-                                    "Fragrance"
-                                )}
+                                {String(record.type ?? "Fragrance")}
                               </small>
 
                             </div>
@@ -3257,128 +3333,12 @@ function Collection({
 
                         </td>
 
-                        <td>
-
-                          <div className="decant-table-list">
-
-                            {Array.isArray(
-                              record.decants
-                            )
-                              ? record.decants.map(
-                                  (
-                                    item,
-                                    index
-                                  ) => {
-                                    const value =
-                                      item as Record<
-                                        string,
-                                        unknown
-                                      >;
-
-                                    return (
-                                      <span
-                                        key={index}
-                                      >
-                                        {String(
-                                          value.size ??
-                                            ""
-                                        )}
-                                        ml
-                                      </span>
-                                    );
-                                  }
-                                )
-                              : "—"}
-
-                          </div>
-
+                        <td className="size-td">
+                          <SizeCell decant={getDecant(record, 5)} />
                         </td>
 
-                        <td className="price">
-
-                          <div className="decant-table-list">
-
-                            {Array.isArray(
-                              record.decants
-                            )
-                              ? record.decants.map(
-                                  (
-                                    item,
-                                    index
-                                  ) => {
-                                    const value =
-                                      item as Record<
-                                        string,
-                                        unknown
-                                      >;
-
-                                    return (
-                                      <span
-                                        key={index}
-                                      >
-                                        Rs.{" "}
-                                        {Number(
-                                          value.price ??
-                                            0
-                                        ).toLocaleString(
-                                          "en-IN"
-                                        )}
-                                      </span>
-                                    );
-                                  }
-                                )
-                              : "—"}
-
-                          </div>
-
-                        </td>
-
-                        <td>
-
-                          <div className="decant-table-list">
-
-                            {Array.isArray(
-                              record.decants
-                            )
-                              ? record.decants.map(
-                                  (
-                                    item,
-                                    index
-                                  ) => {
-                                    const value =
-                                      item as Record<
-                                        string,
-                                        unknown
-                                      >;
-
-                                    const stock =
-                                      Number(
-                                        value.stock ??
-                                          0
-                                      );
-
-                                    return (
-                                      <span
-                                        key={index}
-                                        className={
-                                          stock < 5
-                                            ? "stock low"
-                                            : "stock"
-                                        }
-                                      >
-                                        {String(
-                                          value.size ??
-                                            ""
-                                        )}
-                                        ml: {stock}
-                                      </span>
-                                    );
-                                  }
-                                )
-                              : "—"}
-
-                          </div>
-
+                        <td className="size-td">
+                          <SizeCell decant={getDecant(record, 10)} />
                         </td>
                       </>
                     )}
@@ -3390,11 +3350,7 @@ function Collection({
                         <td>
                           <strong>
                             #
-                            {String(
-                              record._id
-                            )
-                              .slice(-6)
-                              .toUpperCase()}
+                            {String(record._id).slice(-6).toUpperCase()}
                           </strong>
 
                           <small>
@@ -3407,18 +3363,20 @@ function Collection({
 
                         <td>
                           {String(
-                            (record.shipping as Record<string, unknown> | undefined)?.name ??
-                            record.customerName ??
-                            record.customer ??
-                            "Guest"
+                            (
+                              record.shipping as
+                                | Record<string, unknown>
+                                | undefined
+                            )?.name ??
+                              record.customerName ??
+                              record.customer ??
+                              "Guest"
                           )}
                         </td>
 
                         <td className="price">
                           Rs.{" "}
-                          {Number(
-                            record.total ?? 0
-                          ).toLocaleString(
+                          {Number(record.total ?? 0).toLocaleString(
                             "en-IN"
                           )}
                         </td>
@@ -3426,14 +3384,10 @@ function Collection({
                         <td>
                           <span
                             className={`order-status ${String(
-                              record.status ??
-                                "pending"
+                              record.status ?? "pending"
                             )}`}
                           >
-                            {String(
-                              record.status ??
-                                "pending"
-                            )}
+                            {String(record.status ?? "pending")}
                           </span>
                         </td>
                       </>
