@@ -526,6 +526,9 @@ export default function StoreHeader() {
       // Ignore aborted requests
       if (err instanceof Error && err.name === "AbortError") return;
       setSuggestions([]);
+      if (err instanceof Error && err.name !== "AbortError") {
+        toast.error("Unable to fetch suggestions. Please try again.");
+      }
     } finally {
       setSuggestLoading(false);
     }
