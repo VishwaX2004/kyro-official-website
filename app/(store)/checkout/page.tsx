@@ -240,6 +240,7 @@ export default function CheckoutPage() {
           payment_slip_url: receiptUrl,
           payment_slip_filename: receiptFilename,
         }),
+        signal: AbortSignal.timeout(10000), // 10 second timeout
       });
 
       const data = (await response.json()) as {

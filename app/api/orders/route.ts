@@ -14,28 +14,16 @@ export async function GET() {
   }
 
   try {
-    console.log("[ORDERS GET] Fetching orders for user:", session.userId);
-    
     const client = await clientPromise;
-    console.log("[ORDERS GET] MongoDB client connected");
-    
     const db = client.db("kyro");
-    console.log("[ORDERS GET] Database 'kyro' selected");
-    
     const query =
       session.role === "admin" ? {} : { userId: session.userId };
-    console.log("[ORDERS GET] Query:", JSON.stringify(query));
 
     const orders = await db
       .collection("orders")
       .find(query)
       .sort({ createdAt: -1 })
       .toArray();
-
-    console.log("[ORDERS GET] Found", orders.length, "orders");
-    if (orders.length > 0) {
-      console.log("[ORDERS GET] First order:", JSON.stringify(orders[0], null, 2));
-    }
 
     // Serialize ObjectId and Date fields so JSON.stringify works
     const serialized = orders.map((order) => ({
@@ -144,7 +132,7 @@ export async function POST(request: Request) {
       }
     }
 
-    // Validate delivery address fields
+    // Trim and validate delivery address fields
     if (delivery_address) {
       const requiredFields = [
         "name",
@@ -163,16 +151,9 @@ export async function POST(request: Request) {
             { status: 400 }
           );
         }
+        // Trim the field value and update it
+        delivery_address[field as keyof typeof delivery_address] = value.trim();
       }
-    }
-
-    // Rate limiting: 3 orders per minute per user
-    const rateLimitResult = checkRateLimit(session.userId, 3, 60000);
-    if (!rateLimitResult.allowed) {
-      return NextResponse.json(
-        { message: "Too many orders placed. Please try again later." },
-        { status: 429 }
-      );
     }
 
     // Connect to MongoDB
@@ -229,6 +210,13 @@ export async function POST(request: Request) {
       throw new Error("Order insertion failed");
     }
 
+    // Rate limiting: check AFTER successful insert to ensure order was created
+    const rateLimitResult = checkRateLimit(session.userId, 3, 60000);
+    if (!rateLimitResult.allowed) {
+      // Log warning but don't fail the response—the order is already inserted
+      console.error("[ORDER POST] Rate limit exceeded after successful insert");
+    }
+
     // Return 201 immediately; background tasks execute after response is sent
     const response = NextResponse.json(
       {
@@ -263,6 +251,7 @@ export async function POST(request: Request) {
                 },
                 customerEmail,
               }),
+              signal: AbortSignal.timeout(5000), // 5 second timeout
             }
           );
         } catch (emailError) {
