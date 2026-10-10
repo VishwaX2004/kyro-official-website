@@ -1049,6 +1049,50 @@ export default function StoreHeader() {
                 )}
               </Link>
 
+              {/* Account/Login — Mobile only */}
+              {user ? (
+                <button
+                  type="button"
+                  onClick={() => setMobileOpen((v) => !v)}
+                  aria-label={mobileOpen ? "Close menu" : "Open account menu"}
+                  aria-expanded={mobileOpen}
+                  className="
+                    flex h-10 w-10 items-center justify-center
+                    rounded-full border border-black/[0.08] bg-white
+                    transition-all duration-200
+                    hover:border-black/20 hover:bg-black/[0.03]
+                    active:scale-95
+                  "
+                >
+                  {user.imageUrl ? (
+                    <Image
+                      src={user.imageUrl}
+                      alt={displayName}
+                      width={34}
+                      height={34}
+                      className="h-full w-full rounded-full object-cover"
+                    />
+                  ) : (
+                    <div className="flex h-full w-full items-center justify-center rounded-full bg-[#171717] text-[9px] font-semibold text-white">
+                      {initials}
+                    </div>
+                  )}
+                </button>
+              ) : (
+                <Link
+                  href="/login"
+                  className="
+                    flex h-10 px-3 items-center justify-center
+                    rounded-full bg-[#171717] text-white text-[10px] font-semibold
+                    transition-all duration-200
+                    hover:bg-[#292929]
+                    active:scale-95
+                  "
+                >
+                  Login
+                </Link>
+              )}
+
               {/* Hamburger */}
               <button
                 type="button"

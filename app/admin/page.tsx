@@ -370,6 +370,11 @@ export default function AdminPage() {
   function selectResource(next: Resource) {
     setResource(next);
     setNotice("");
+
+    // On mobile the page is long, so jump back to the top of the new section.
+    if (typeof window !== "undefined") {
+      window.scrollTo({ top: 0, behavior: "auto" });
+    }
   }
 
   /* =====================================================
@@ -863,10 +868,45 @@ export default function AdminPage() {
     orders: "Orders",
   };
 
+  const mobileTitle =
+    resource === "overview"
+      ? "Overview"
+      : resource === "settings"
+        ? "Settings"
+        : titles[resource];
+
   return (
     <main className="admin-shell kyro-admin">
       {/* =================================================
-          SIDEBAR
+          MOBILE TOP BAR (hidden on desktop)
+      ================================================= */}
+
+      <div className="mobile-topbar">
+        <Link className="mobile-brand" href="/" aria-label="Kyro Parfums home">
+          <Image
+            className="mobile-logo"
+            src="/logo.png"
+            alt="Kyro Parfums"
+            width={126}
+            height={76}
+            priority
+          />
+        </Link>
+
+        <span className="mobile-title">{mobileTitle}</span>
+
+        <Link
+          className="mobile-home"
+          href="/"
+          aria-label="Go back to the Kyro Parfums homepage"
+        >
+          {icons.back}
+          <span>Store</span>
+        </Link>
+      </div>
+
+      {/* =================================================
+          SIDEBAR (bottom navigation on mobile)
       ================================================= */}
 
       <aside className="admin-sidebar">
@@ -912,6 +952,7 @@ export default function AdminPage() {
             className={resource === "settings" ? "active" : ""}
             onClick={() => selectResource("settings")}
             aria-label="Settings"
+            aria-current={resource === "settings" ? "page" : undefined}
           >
             <span className="nav-icon">{icons.settings}</span>
 
@@ -1781,6 +1822,8 @@ body{
   border-radius:12px;
   background:#171717;
   color:#d0ad70;
+  overflow:hidden;
+  flex-shrink:0;
 }
 
 .product-thumb{
@@ -2875,35 +2918,205 @@ body{
 
 
 /* =========================================================
-   MOBILE RESPONSIVENESS PATCH
-   Desktop styles above remain unchanged.
+   MOBILE APP-STYLE EXPERIENCE  (phones, <= 760px)
+   Everything below is wrapped in a media query, so the
+   desktop layout above is completely unchanged.
 ========================================================= */
-@media (max-width: 760px) {
-  .kyro-admin,
-  .kyro-admin * {
-    box-sizing: border-box;
-  }
 
+/* Elements that only exist for mobile are hidden by default */
+.kyro-admin .mobile-topbar { display: none; }
+.kyro-admin .action-text { display: none; }
+
+@media (max-width: 760px) {
   .kyro-admin {
     width: 100%;
     max-width: 100%;
     min-width: 0;
     overflow-x: clip;
+    font-size: 15px;
+    -webkit-tap-highlight-color: transparent;
   }
+
+  /* ---------- TOP BAR ---------- */
+
+  .kyro-admin .mobile-topbar {
+    position: fixed;
+    top: 0;
+    right: 0;
+    left: 0;
+    z-index: 90;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    height: calc(56px + env(safe-area-inset-top));
+    padding: env(safe-area-inset-top) 14px 0;
+    background: #171717;
+    color: #fff;
+    border-bottom: 1px solid rgba(255, 255, 255, .08);
+  }
+
+  .kyro-admin .mobile-brand {
+    display: flex;
+    align-items: center;
+    flex: 0 0 auto;
+  }
+
+  .kyro-admin .mobile-logo {
+    width: 62px;
+    height: auto;
+    object-fit: contain;
+    filter: brightness(0) invert(1);
+  }
+
+  .kyro-admin .mobile-title {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    color: #fff;
+    font-size: 16px;
+    font-weight: 700;
+    letter-spacing: -.01em;
+    text-align: center;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .kyro-admin .mobile-home {
+    display: inline-flex;
+    flex: 0 0 auto;
+    align-items: center;
+    gap: 6px;
+    height: 36px;
+    padding: 0 12px 0 10px;
+    border: 1px solid rgba(255, 255, 255, .22);
+    border-radius: 999px;
+    color: #fff;
+    font-size: 12px;
+    font-weight: 700;
+    text-decoration: none;
+  }
+
+  .kyro-admin .mobile-home svg {
+    width: 16px;
+    height: 16px;
+  }
+
+  .kyro-admin .mobile-home:active {
+    background: rgba(255, 255, 255, .14);
+  }
+
+  /* ---------- BOTTOM NAVIGATION ---------- */
+
+  .kyro-admin .admin-sidebar {
+    top: auto;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    z-index: 100;
+    width: 100%;
+    min-width: 0;
+    max-width: 100%;
+    height: calc(66px + env(safe-area-inset-bottom));
+    min-height: 0;
+    flex-direction: row;
+    align-items: stretch;
+    gap: 4px;
+    padding: 6px 6px calc(6px + env(safe-area-inset-bottom));
+    overflow: hidden;
+    border-top: 1px solid rgba(255, 255, 255, .1);
+    border-right: 0;
+    box-shadow: 0 -10px 28px rgba(0, 0, 0, .2);
+  }
+
+  .kyro-admin .sidebar-top,
+  .kyro-admin .admin-user-mini,
+  .kyro-admin .admin-section-label,
+  .kyro-admin .admin-sidebar-bottom a {
+    display: none !important;
+  }
+
+  .kyro-admin .admin-nav {
+    flex: 4 1 0;
+    flex-direction: row;
+    gap: 2px;
+    width: auto;
+    min-width: 0;
+    margin: 0;
+    padding: 0;
+  }
+
+  .kyro-admin .admin-sidebar-bottom {
+    flex: 1 1 0;
+    flex-direction: row;
+    gap: 0;
+    width: auto;
+    min-width: 0;
+    margin: 0;
+    padding: 0;
+    border: 0;
+  }
+
+  .kyro-admin .admin-nav button,
+  .kyro-admin .admin-sidebar-bottom button {
+    flex: 1 1 0;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 3px;
+    width: auto;
+    min-width: 0;
+    height: auto;
+    min-height: 52px;
+    padding: 4px 2px;
+    border-radius: 12px;
+    font-size: 11px;
+    line-height: 1.1;
+    text-align: center;
+  }
+
+  .kyro-admin .admin-nav button:active,
+  .kyro-admin .admin-sidebar-bottom button:active {
+    background: rgba(255, 255, 255, .14);
+  }
+
+  .kyro-admin .nav-icon {
+    flex: 0 0 auto;
+    width: 22px;
+    min-width: 22px;
+    height: 22px;
+  }
+
+  .kyro-admin .nav-icon svg {
+    width: 21px;
+    height: 21px;
+  }
+
+  .kyro-admin .nav-label {
+    flex: 0 0 auto;
+    max-width: 100%;
+    font-size: 11px;
+    font-weight: 600;
+    line-height: 1.1;
+  }
+
+  /* ---------- PAGE CONTENT ---------- */
 
   .kyro-admin .admin-content {
     width: 100%;
     min-width: 0;
     max-width: 100%;
     margin-left: 0;
-    padding: 22px 14px calc(94px + env(safe-area-inset-bottom));
+    padding:
+      calc(56px + env(safe-area-inset-top) + 18px)
+      14px
+      calc(100px + env(safe-area-inset-bottom));
   }
 
   .kyro-admin .admin-header {
-    width: 100%;
     min-width: 0;
-    align-items: flex-start;
-    gap: 14px;
+    gap: 0;
+    padding-bottom: 16px;
   }
 
   .kyro-admin .header-copy {
@@ -2911,293 +3124,483 @@ body{
     min-width: 0;
   }
 
+  .kyro-admin .admin-kicker {
+    font-size: 10px;
+    letter-spacing: .13em;
+  }
+
   .kyro-admin .admin-header h1 {
-    max-width: 100%;
-    font-size: clamp(27px, 7vw, 36px);
-    line-height: 1.12;
+    margin-top: 6px;
+    font-size: clamp(26px, 7.4vw, 34px);
+    line-height: 1.1;
     overflow-wrap: anywhere;
   }
 
   .kyro-admin .header-subtitle {
-    max-width: 100%;
+    margin-top: 8px;
     font-size: 14px;
-    line-height: 1.55;
-    overflow-wrap: anywhere;
+    line-height: 1.5;
   }
 
+  /* the avatar / status pill live in the bottom nav + top bar on mobile */
   .kyro-admin .admin-header-actions {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: 8px;
-    min-width: 0;
-  }
-
-  .kyro-admin .admin-header-actions .live-pill {
-    max-width: 100%;
-    margin-right: auto;
+    display: none;
   }
 
   .kyro-admin .admin-notice {
     align-items: flex-start;
     gap: 10px;
+    margin-top: 14px;
     overflow-wrap: anywhere;
   }
 
-  /* Bottom navigation: all sections remain reachable by touch. */
-  .kyro-admin .admin-sidebar {
-    z-index: 100;
-    top: auto;
-    right: 0;
-    bottom: 0;
-    left: 0;
-    display: flex;
-    width: 100%;
-    min-width: 0;
-    max-width: 100%;
-    height: calc(66px + env(safe-area-inset-bottom));
-    min-height: 66px;
-    flex-direction: row;
-    align-items: stretch;
-    gap: 0;
-    padding: 5px 5px calc(5px + env(safe-area-inset-bottom));
-    overflow-x: auto;
-    overflow-y: hidden;
-    overscroll-behavior-x: contain;
-    -webkit-overflow-scrolling: touch;
+  .kyro-admin .admin-notice button {
+    min-width: 36px;
+    min-height: 36px;
+    margin-top: -6px;
+    margin-right: -6px;
   }
 
-  .kyro-admin .sidebar-top,
-  .kyro-admin .admin-user-mini,
-  .kyro-admin .admin-section-label {
-    display: none !important;
-  }
+  /* ---------- OVERVIEW ---------- */
 
-  .kyro-admin .admin-nav,
-  .kyro-admin .admin-sidebar-bottom {
-    display: flex;
-    flex: 1 0 auto;
-    width: auto;
-    min-width: 0;
-    flex-direction: row;
-    align-items: stretch;
-    justify-content: space-around;
-    gap: 2px;
-    margin: 0;
-    padding: 0;
-    border: 0;
-  }
-
-  .kyro-admin .admin-nav button,
-  .kyro-admin .admin-sidebar-bottom button,
-  .kyro-admin .admin-sidebar-bottom a {
-    display: flex;
-    flex: 1 1 0;
-    min-width: 52px;
-    min-height: 54px;
-    height: 100%;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    gap: 4px;
-    padding: 5px 3px;
-    border-radius: 10px;
-    font-size: 10px;
-    line-height: 1.1;
-    text-align: center;
-    white-space: normal;
-  }
-
-  .kyro-admin .nav-icon {
-    display: flex;
-    width: 20px;
-    min-width: 20px;
-    height: 20px;
-    align-items: center;
-    justify-content: center;
-  }
-
-  .kyro-admin .nav-icon svg {
-    width: 18px;
-    height: 18px;
-  }
-
-  .kyro-admin .nav-label {
-    max-width: 100%;
-    font-size: 10px;
-    line-height: 1.1;
-    white-space: nowrap;
-  }
-
-  .kyro-admin .collection,
-  .kyro-admin .overview-grid,
-  .kyro-admin .settings-page,
-  .kyro-admin .settings-card,
-  .kyro-admin .welcome-card,
-  .kyro-admin .metric-grid,
-  .kyro-admin .quick-grid {
-    min-width: 0;
-    max-width: 100%;
-  }
-
-  .kyro-admin .metric-grid,
-  .kyro-admin .quick-grid,
-  .kyro-admin .overview-grid,
-  .kyro-admin .settings-page {
-    grid-template-columns: minmax(0, 1fr);
+  .kyro-admin .overview {
+    margin-top: 18px;
   }
 
   .kyro-admin .welcome-card {
-    min-height: 300px;
+    min-height: 0;
     padding: 22px 18px;
-    overflow: hidden;
+    border-radius: 20px;
   }
 
   .kyro-admin .welcome-card h2 {
     max-width: 100%;
-    font-size: clamp(27px, 7vw, 34px);
+    font-size: clamp(24px, 6.8vw, 30px);
     overflow-wrap: anywhere;
   }
 
+  .kyro-admin .welcome-card p {
+    font-size: 14px;
+    line-height: 1.6;
+  }
+
   .kyro-admin .welcome-bottle {
-    right: -10px;
-    bottom: 6px;
-    max-width: 48%;
-    opacity: .45;
+    right: -14px;
+    bottom: -6px;
+    max-width: 40%;
+    opacity: .28;
+    pointer-events: none;
+  }
+
+  .kyro-admin .metric-grid,
+  .kyro-admin .overview-grid,
+  .kyro-admin .quick-grid {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 10px;
+  }
+
+  .kyro-admin .metric-card {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    column-gap: 12px;
+    min-height: 0;
+    padding: 16px 18px;
+    border-radius: 18px;
+  }
+
+  .kyro-admin .metric-card > span {
+    grid-column: 1;
+    font-size: 11px;
+  }
+
+  .kyro-admin .metric-card strong {
+    grid-column: 2;
+    grid-row: 1 / span 2;
+    margin: 0;
+    font-size: 38px;
+    line-height: 1;
+  }
+
+  .kyro-admin .metric-card small {
+    grid-column: 1;
+    margin-top: 6px;
+  }
+
+  .kyro-admin .metric-card i {
+    display: none;
+  }
+
+  .kyro-admin .panel-card {
+    min-height: 0;
+    padding: 20px 18px;
+    border-radius: 20px;
+  }
+
+  .kyro-admin .panel-heading h3 {
+    font-size: 22px;
+  }
+
+  .kyro-admin .quick-grid {
+    margin-top: 18px;
+  }
+
+  .kyro-admin .quick-grid button {
+    display: grid;
+    grid-template-columns: 38px minmax(0, 1fr);
+    column-gap: 14px;
+    align-items: center;
+    min-height: 68px;
+    padding: 12px 14px;
+  }
+
+  .kyro-admin .quick-grid b {
+    grid-row: 1 / span 2;
+    width: 38px;
+    height: 38px;
+    margin: 0;
+  }
+
+  .kyro-admin .quick-grid small {
+    margin-top: 2px;
+  }
+
+  .kyro-admin .inspiration-card p {
+    font-size: 20px;
+  }
+
+  /* ---------- SEARCH + ADD BUTTON ---------- */
+
+  .kyro-admin .collection {
+    min-width: 0;
+    max-width: 100%;
+    margin-top: 16px;
   }
 
   .kyro-admin .collection-toolbar {
-    display: flex;
-    width: 100%;
-    min-width: 0;
-    flex-direction: column;
-    align-items: stretch;
-    gap: 10px;
+    position: sticky;
+    top: calc(56px + env(safe-area-inset-top));
+    z-index: 40;
+    display: block;
+    margin: 0 -14px 12px;
+    padding: 8px 14px;
+    background: var(--kyro-ivory);
   }
 
   .kyro-admin .search-box {
     width: 100%;
-    min-width: 0;
     max-width: 100%;
+    height: 50px;
+    border-radius: 14px;
   }
 
   .kyro-admin .search-box input {
-    width: 100%;
     min-width: 0;
     font-size: 16px;
   }
 
-  .kyro-admin .collection-toolbar .primary-action,
-  .kyro-admin .settings-actions .primary-action {
-    width: 100%;
-    max-width: 100%;
-    justify-content: center;
+  /* "Add" becomes a floating action button above the bottom nav */
+  .kyro-admin .collection-toolbar .primary-action {
+    position: fixed;
+    right: 16px;
+    bottom: calc(66px + env(safe-area-inset-bottom) + 14px);
+    z-index: 95;
+    width: auto;
+    min-height: 52px;
+    padding: 0 22px;
+    font-size: 14px;
+    box-shadow: 0 14px 32px rgba(0, 0, 0, .3);
   }
 
-  /* Wide data tables scroll inside their own card, never the page. */
-  .kyro-admin .table-card {
-    width: 100%;
-    min-width: 0;
-    max-width: 100%;
-    overflow: hidden;
+  .kyro-admin .collection-toolbar .primary-action:active {
+    transform: scale(.97);
   }
 
-  .kyro-admin .table-scroll {
-    display: block;
-    width: 100%;
-    max-width: 100%;
-    overflow-x: auto;
-    overflow-y: hidden;
-    overscroll-behavior-x: contain;
-    -webkit-overflow-scrolling: touch;
-    scrollbar-width: thin;
-  }
-
-  .kyro-admin .table-card table {
-    width: max-content;
-    min-width: 680px;
-    max-width: none;
-    table-layout: auto;
-  }
-
-  .kyro-admin .table-card table.products-table {
-    min-width: 820px;
-  }
-
-  .kyro-admin .table-card table.orders-table {
-    min-width: 800px;
-  }
-
-  .kyro-admin .table-card th {
-    padding: 13px 12px;
-    white-space: nowrap;
-  }
-
-  .kyro-admin .table-card td {
-    padding: 13px 12px;
-    vertical-align: middle;
-  }
-
-  .kyro-admin .cell-flex {
-    min-width: 0;
-    gap: 9px;
-  }
-
-  .kyro-admin .cell-flex > div,
-  .kyro-admin .cell-flex > span {
-    min-width: 0;
-    overflow-wrap: anywhere;
-  }
-
-  .kyro-admin .row-actions {
-    gap: 6px;
-  }
-
-  .kyro-admin .row-actions button.table-icon-action {
-    width: 38px;
-    min-width: 38px;
-    height: 38px;
-  }
+  /* ---------- ORDER FILTER CHIPS ---------- */
 
   .kyro-admin .order-filters {
     flex-wrap: nowrap;
-    max-width: 100%;
-    padding-bottom: 5px;
+    margin: 0 -14px 12px;
+    padding: 2px 14px 6px;
     overflow-x: auto;
     overscroll-behavior-x: contain;
     -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+
+  .kyro-admin .order-filters::-webkit-scrollbar {
+    display: none;
   }
 
   .kyro-admin .order-chip {
     flex: 0 0 auto;
-    min-height: 38px;
+    min-height: 40px;
   }
 
+  /* ---------- TABLES -> CARD LISTS ---------- */
+
+  .kyro-admin .table-card {
+    overflow: visible;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    box-shadow: none;
+  }
+
+  .kyro-admin .table-scroll {
+    overflow: visible;
+  }
+
+  .kyro-admin .table-card table,
+  .kyro-admin .table-card table.products-table,
+  .kyro-admin .table-card table.orders-table {
+    display: block;
+    width: 100%;
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  .kyro-admin .table-card thead {
+    display: none;
+  }
+
+  .kyro-admin .table-card tbody {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .kyro-admin .table-card tr {
+    display: block;
+  }
+
+  .kyro-admin .table-card td {
+    display: block;
+    min-width: 0;
+    padding: 0;
+    border: 0;
+    font-size: 14px;
+    vertical-align: top;
+    overflow-wrap: anywhere;
+  }
+
+  /* row card */
+  .kyro-admin .table-card tr.data-row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    column-gap: 12px;
+    row-gap: 14px;
+    padding: 16px;
+    border: 1px solid var(--kyro-line);
+    border-radius: 18px;
+    background: #fffefa;
+    box-shadow: 0 8px 24px rgba(23, 23, 23, .05);
+  }
+
+  .kyro-admin .table-card tbody tr.data-row:hover {
+    background: #fffefa;
+  }
+
+  .kyro-admin .table-card tr.order-row:active {
+    background: #fbf8f0;
+    transform: scale(.995);
+  }
+
+  .kyro-admin .table-card td[data-label]::before {
+    content: attr(data-label);
+    display: block;
+    margin-bottom: 6px;
+    color: #6b655b;
+    font-size: 11px;
+    font-weight: 800;
+    letter-spacing: .06em;
+    text-transform: uppercase;
+  }
+
+  /* users: avatar + name on top, role / joined below */
+  .kyro-admin .table-card tr.data-row-users {
+    grid-template-areas:
+      "main main"
+      "role joined"
+      "actions actions";
+  }
+
+  .kyro-admin .td-main { grid-area: main; }
+  .kyro-admin .td-role { grid-area: role; }
+  .kyro-admin .td-joined { grid-area: joined; }
+
+  /* products: image + name on top, 5ml / 10ml side by side */
+  .kyro-admin .table-card tr.data-row-products {
+    grid-template-areas:
+      "main main"
+      "s5 s10"
+      "actions actions";
+  }
+
+  .kyro-admin .td-s5 { grid-area: s5; }
+  .kyro-admin .td-s10 { grid-area: s10; }
+
+  .kyro-admin .products-table td:first-child,
+  .kyro-admin .products-table td.size-td {
+    padding: 0;
+    border-left: 0;
+    vertical-align: top;
+  }
+
+  .kyro-admin .products-table td.size-td {
+    padding: 12px;
+    border-radius: 14px;
+    background: #faf8f2;
+  }
+
+  .kyro-admin .product-thumb {
+    width: 64px;
+    height: 76px;
+    flex-basis: 64px;
+    border-radius: 12px;
+  }
+
+  .kyro-admin .size-price {
+    font-size: 16px;
+  }
+
+  /* orders: #id + status, then customer + total */
+  .kyro-admin .table-card tr.data-row-orders {
+    grid-template-areas:
+      "order status"
+      "customer total"
+      "actions actions";
+    cursor: pointer;
+  }
+
+  .kyro-admin .td-order { grid-area: order; }
+  .kyro-admin .td-status { grid-area: status; justify-self: end; }
+  .kyro-admin .td-customer { grid-area: customer; }
+  .kyro-admin .td-total {
+    grid-area: total;
+    align-self: center;
+    text-align: right;
+    font-size: 18px;
+    font-weight: 800;
+  }
+
+  .kyro-admin .orders-table .order-id-cell strong {
+    font-size: 17px;
+  }
+
+  .kyro-admin .table-card td.td-status .order-status {
+    padding: 7px 13px;
+  }
+
+  /* action row: big touch-friendly buttons */
+  .kyro-admin .table-card td.row-actions {
+    grid-area: actions;
+    display: flex;
+    align-items: stretch;
+    justify-content: stretch;
+    gap: 10px;
+    padding: 14px 0 0;
+    border-top: 1px solid rgba(23, 23, 23, .08);
+    text-align: left;
+  }
+
+  .kyro-admin .row-actions .order-row-hint {
+    display: none;
+  }
+
+  .kyro-admin .row-actions button.table-icon-action {
+    flex: 1 1 0;
+    gap: 8px;
+    width: auto;
+    min-width: 0;
+    height: 46px;
+    padding: 0 14px;
+    border-radius: 12px;
+    font-size: 14px;
+    font-weight: 700;
+  }
+
+  .kyro-admin .row-actions button.table-icon-action:hover {
+    transform: none;
+  }
+
+  .kyro-admin .row-actions button.table-icon-action:active {
+    background: #f1ebdd;
+  }
+
+  .kyro-admin .row-actions button.delete-action:active {
+    background: #ffe4e1;
+  }
+
+  .kyro-admin .action-text {
+    display: inline;
+  }
+
+  /* empty + loading state */
+  .kyro-admin .table-card tr:not(.data-row) {
+    display: block;
+    border: 1px dashed rgba(23, 23, 23, .2);
+    border-radius: 18px;
+    background: #fffefa;
+  }
+
+  .kyro-admin .table-card td.empty-state {
+    height: auto;
+    padding: 44px 20px;
+    font-size: 14px;
+    line-height: 1.5;
+  }
+
+  /* ---------- SETTINGS ---------- */
+
   .kyro-admin .settings-page {
+    grid-template-columns: minmax(0, 1fr);
     gap: 14px;
-    margin-top: 18px;
+    margin-top: 16px;
   }
 
   .kyro-admin .profile-card,
   .kyro-admin .settings-form {
     min-width: 0;
     padding: 20px;
+    border-radius: 18px;
   }
 
   .kyro-admin .profile-card {
+    min-height: 0;
     flex-direction: row;
     flex-wrap: wrap;
     align-items: center;
+    gap: 6px 14px;
   }
 
   .kyro-admin .large-avatar {
     flex: 0 0 64px;
     width: 64px;
     height: 64px;
-    margin: 0 8px 0 0;
+    margin: 0;
   }
 
-  .kyro-admin .settings-form .form-grid-2,
+  .kyro-admin .profile-card h2 {
+    flex: 1 1 calc(100% - 90px);
+    font-size: 20px;
+  }
+
+  .kyro-admin .profile-card p {
+    flex: 1 1 100%;
+  }
+
+  .kyro-admin .settings-form .form-grid-2 {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .kyro-admin .settings-actions .primary-action {
+    width: 100%;
+    min-height: 50px;
+  }
+
+  /* ---------- FORMS ---------- */
+
   .kyro-admin .form-grid-2,
   .kyro-admin .notes-grid,
   .kyro-admin .image-upload-grid,
@@ -3223,10 +3626,13 @@ body{
   .kyro-admin .form-field select,
   .kyro-admin .form-field textarea,
   .kyro-admin .simple-form-stack > label input,
-  .kyro-admin .simple-form-stack > label select {
+  .kyro-admin .simple-form-stack > label select,
+  .kyro-admin .settings-form input,
+  .kyro-admin .drawer-foot select {
     width: 100%;
     min-width: 0;
     max-width: 100%;
+    min-height: 48px;
     font-size: 16px;
   }
 
@@ -3234,69 +3640,120 @@ body{
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
+  .kyro-admin .check-card {
+    min-height: 50px;
+  }
+
   .kyro-admin .image-manager-intro {
     flex-direction: column;
     align-items: stretch;
   }
 
-  .kyro-admin .image-manager-intro > * {
-    max-width: 100%;
-    overflow-wrap: anywhere;
+  .kyro-admin .add-image-button {
+    min-height: 52px;
   }
 
+  /* ---------- MODAL -> BOTTOM SHEET ---------- */
+
   .kyro-admin .modal-backdrop {
-    align-items: flex-start;
-    padding: max(8px, env(safe-area-inset-top)) 8px 8px;
-    overflow-y: auto;
+    align-items: flex-end;
+    padding: 0;
   }
 
   .kyro-admin .record-modal {
     width: 100%;
     max-width: 100%;
-    max-height: calc(100dvh - 16px - env(safe-area-inset-top));
     min-width: 0;
-    margin: 0 auto;
-    border-radius: 16px;
+    max-height: calc(100dvh - env(safe-area-inset-top) - 12px);
+    margin: 0;
+    border-radius: 22px 22px 0 0;
+    animation: kyroSheet .28s cubic-bezier(.2, .8, .2, 1);
+  }
+
+  @keyframes kyroSheet {
+    from { transform: translateY(40px); opacity: .5; }
+    to { transform: none; opacity: 1; }
   }
 
   .kyro-admin .record-modal-header-fixed {
-    padding: 18px 16px 14px;
+    padding: 22px 16px 14px;
+  }
+
+  .kyro-admin .record-modal-header-fixed::before {
+    content: "";
+    position: absolute;
+    top: 8px;
+    left: 50%;
+    width: 40px;
+    height: 4px;
+    border-radius: 999px;
+    background: rgba(23, 23, 23, .18);
+    transform: translateX(-50%);
+  }
+
+  .kyro-admin .record-modal-header-fixed h2 {
+    margin-right: 46px;
+    font-size: 24px;
+  }
+
+  .kyro-admin .modal-close {
+    top: 16px;
+    right: 14px;
+    width: 40px;
+    height: 40px;
   }
 
   .kyro-admin .record-modal-content {
     min-width: 0;
     padding: 12px;
+    -webkit-overflow-scrolling: touch;
   }
 
   .kyro-admin .record-modal-footer {
-    display: flex;
-    flex-wrap: wrap;
     gap: 8px;
-    padding: 12px;
+    padding: 12px 12px calc(12px + env(safe-area-inset-bottom));
   }
 
-  .kyro-admin .record-modal-footer > button,
-  .kyro-admin .record-modal-footer .primary-action {
-    flex: 1 1 130px;
+  .kyro-admin .record-modal-footer > button {
+    flex: 1 1 0;
     min-width: 0;
+    min-height: 50px;
+  }
+
+  .kyro-admin .record-modal-footer .primary-action {
+    flex: 2 1 0;
+  }
+
+  /* ---------- ORDER DRAWER (full screen) ---------- */
+
+  .kyro-admin .order-drawer {
+    width: 100%;
+    max-width: 100%;
   }
 
   .kyro-admin .drawer-head {
-    padding: 18px 16px 14px;
+    padding: calc(18px + env(safe-area-inset-top)) 16px 14px;
+  }
+
+  .kyro-admin .drawer-close {
+    top: calc(14px + env(safe-area-inset-top));
+    right: 14px;
+    width: 40px;
+    height: 40px;
   }
 
   .kyro-admin .drawer-title-row {
-    margin-right: 36px;
+    margin-right: 48px;
   }
 
   .kyro-admin .drawer-title-row h2 {
     font-size: 25px;
-    overflow-wrap: anywhere;
   }
 
   .kyro-admin .drawer-body {
     min-width: 0;
     padding: 14px 12px 18px;
+    -webkit-overflow-scrolling: touch;
   }
 
   .kyro-admin .drawer-card {
@@ -3304,83 +3761,83 @@ body{
     padding: 14px;
   }
 
+  .kyro-admin .drawer-stat strong {
+    font-size: 16px;
+  }
+
+  .kyro-admin .order-steps {
+    font-size: 10px;
+  }
+
+  .kyro-admin .order-step {
+    gap: 6px;
+  }
+
+  .kyro-admin .drawer-contact a {
+    flex: 1 1 0;
+    justify-content: center;
+    min-height: 44px;
+  }
+
+  .kyro-admin .drawer-copy {
+    min-height: 32px;
+  }
+
+  /* sticky status bar: select + save side by side */
   .kyro-admin .drawer-foot {
-    flex-direction: column;
-    align-items: stretch;
+    flex-direction: row;
+    align-items: flex-end;
     gap: 10px;
-    padding: 12px;
-    padding-bottom: calc(12px + env(safe-area-inset-bottom));
+    padding: 12px 12px calc(12px + env(safe-area-inset-bottom));
   }
 
-  .kyro-admin .drawer-foot > *,
+  .kyro-admin .drawer-foot label {
+    flex: 1 1 0;
+    min-width: 0;
+  }
+
   .kyro-admin .drawer-foot .primary-action {
-    width: 100%;
-    min-width: 0;
-  }
-
-  .kyro-admin .drawer-summary div {
-    gap: 8px;
-  }
-
-  .kyro-admin .drawer-summary div > * {
-    min-width: 0;
-    overflow-wrap: anywhere;
+    flex: 0 0 auto;
+    width: auto;
+    min-height: 48px;
+    padding: 0 20px;
+    font-size: 14px;
   }
 }
 
-@media (max-width: 460px) {
-  .kyro-admin .admin-content {
-    padding-right: 11px;
-    padding-left: 11px;
+@media (max-width: 380px) {
+  .kyro-admin .mobile-home span {
+    display: none;
   }
 
-  .kyro-admin .admin-header h1 {
-    font-size: 29px;
-  }
-
-  .kyro-admin .admin-kicker {
-    font-size: 9px;
-    letter-spacing: .12em;
-  }
-
-  .kyro-admin .admin-sidebar {
-    padding-right: 3px;
-    padding-left: 3px;
-  }
-
-  .kyro-admin .admin-nav,
-  .kyro-admin .admin-sidebar-bottom {
-    gap: 1px;
-  }
-
-  .kyro-admin .admin-nav button,
-  .kyro-admin .admin-sidebar-bottom button,
-  .kyro-admin .admin-sidebar-bottom a {
-    min-width: 48px;
-    padding-right: 2px;
-    padding-left: 2px;
+  .kyro-admin .mobile-home {
+    padding: 0 10px;
   }
 
   .kyro-admin .nav-label {
-    font-size: 9px;
-  }
-
-  .kyro-admin .welcome-card {
-    min-height: 280px;
-    padding: 20px 16px;
-  }
-
-  .kyro-admin .welcome-card h2 {
-    font-size: 27px;
+    font-size: 10px;
   }
 
   .kyro-admin .check-grid {
     grid-template-columns: minmax(0, 1fr);
   }
 
-  .kyro-admin .profile-card,
-  .kyro-admin .settings-form {
-    padding: 16px;
+  .kyro-admin .table-card tr.data-row-products {
+    grid-template-areas:
+      "main"
+      "s5"
+      "s10"
+      "actions";
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .kyro-admin .drawer-foot {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .kyro-admin .drawer-foot .primary-action {
+    width: 100%;
   }
 }
           `,
@@ -3785,7 +4242,8 @@ function Collection({
                 rows.map((record) => (
                   <tr
                     key={record._id}
-                    className={isOrders ? "order-row" : undefined}
+                    className={`data-row data-row-${resource}${isOrders ? " order-row" : ""
+                      }`}
                     tabIndex={isOrders ? 0 : undefined}
                     onClick={isOrders ? () => onView(record) : undefined}
                     onKeyDown={
@@ -3808,10 +4266,25 @@ function Collection({
 
                     {resource === "users" && (
                       <>
-                        <td>
+                        <td className="td-main">
                           <div className="cell-flex">
                             <span className="table-avatar">
-                              {String(record.name ?? "?").slice(0, 1)}
+                              {(record.picture || record.imageUrl) ? (
+                                // eslint-disable-next-line @next/next/no-img-element
+                                <img
+                                  src={String(record.picture ?? record.imageUrl)}
+                                  alt={String(record.name ?? "User")}
+                                  style={{
+                                    width: "100%",
+                                    height: "100%",
+                                    objectFit: "cover",
+                                    borderRadius: "inherit",
+                                    display: "block",
+                                  }}
+                                />
+                              ) : (
+                                String(record.name ?? "?").slice(0, 1).toUpperCase()
+                              )}
                             </span>
 
                             <div>
@@ -3822,13 +4295,15 @@ function Collection({
                           </div>
                         </td>
 
-                        <td>
+                        <td className="td-role" data-label="Role">
                           <span className="tag">
                             {String(record.role ?? "customer")}
                           </span>
                         </td>
 
-                        <td>{formatDate(record.createdAt)}</td>
+                        <td className="td-joined" data-label="Joined">
+                          {formatDate(record.createdAt)}
+                        </td>
                       </>
                     )}
 
@@ -3836,7 +4311,7 @@ function Collection({
 
                     {resource === "products" && (
                       <>
-                        <td>
+                        <td className="td-main">
                           <div className="cell-flex">
                             <span
                               className="product-thumb"
@@ -3866,11 +4341,11 @@ function Collection({
                           </div>
                         </td>
 
-                        <td className="size-td">
+                        <td className="size-td td-s5" data-label="5 ml">
                           <SizeCell decant={getDecant(record, 5)} />
                         </td>
 
-                        <td className="size-td">
+                        <td className="size-td td-s10" data-label="10 ml">
                           <SizeCell decant={getDecant(record, 10)} />
                         </td>
                       </>
@@ -3880,7 +4355,7 @@ function Collection({
 
                     {isOrders && (
                       <>
-                        <td>
+                        <td className="td-order">
                           <div className="order-id-cell">
                             <strong>#{orderNumber(record)}</strong>
 
@@ -3892,7 +4367,7 @@ function Collection({
                           </div>
                         </td>
 
-                        <td>
+                        <td className="td-customer">
                           <div className="order-customer">
                             <strong>{orderCustomer(record).name}</strong>
 
@@ -3902,11 +4377,11 @@ function Collection({
                           </div>
                         </td>
 
-                        <td className="price">
+                        <td className="price td-total">
                           {formatRupees(Number(record.total ?? 0))}
                         </td>
 
-                        <td>
+                        <td className="td-status">
                           <span
                             className={`order-status ${String(
                               record.status ?? "pending"
@@ -3942,6 +4417,7 @@ function Collection({
                               <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Z" />
                               <circle cx="12" cy="12" r="3" />
                             </svg>
+                            <span className="action-text">View details</span>
                           </button>
                         </>
                       ) : (
@@ -3956,6 +4432,7 @@ function Collection({
                             <path d="M12 20h9" />
                             <path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L8 18l-4 1 1-4Z" />
                           </svg>
+                          <span className="action-text">Edit</span>
                         </button>
                       )}
 
@@ -3975,6 +4452,7 @@ function Collection({
                           <path d="m19 6-1 14H6L5 6" />
                           <path d="M10 11v5M14 11v5" />
                         </svg>
+                        <span className="action-text">Delete</span>
                       </button>
                     </td>
                   </tr>
@@ -4044,6 +4522,17 @@ function OrderDrawer({
 
     return () => window.removeEventListener("keydown", onKey);
   }, [onClose]);
+
+  // Stop the page behind the drawer from scrolling (important on phones)
+  useEffect(() => {
+    const previous = document.body.style.overflow;
+
+    document.body.style.overflow = "hidden";
+
+    return () => {
+      document.body.style.overflow = previous;
+    };
+  }, []);
 
   const items = Array.isArray(order.items)
     ? (order.items as unknown as AdminOrderItem[])
@@ -4393,6 +4882,17 @@ function RecordModal({
   const isProduct = collection === "products";
 
   const [imageUploadingCount, setImageUploadingCount] = useState(0);
+
+  // Stop the page behind the sheet from scrolling (important on phones)
+  useEffect(() => {
+    const previous = document.body.style.overflow;
+
+    document.body.style.overflow = "hidden";
+
+    return () => {
+      document.body.style.overflow = previous;
+    };
+  }, []);
 
   /* =====================================================
      EXISTING IMAGES
@@ -5282,6 +5782,7 @@ function DecantEditor({
           <input
             name={`decant${size}LabelledPrice`}
             type="number"
+            inputMode="numeric"
             min="0"
             step="1"
             defaultValue={labelledPrice}
@@ -5297,6 +5798,7 @@ function DecantEditor({
           <input
             name={`decant${size}Price`}
             type="number"
+            inputMode="numeric"
             min="0"
             step="1"
             defaultValue={price}
@@ -5312,6 +5814,7 @@ function DecantEditor({
           <input
             name={`decant${size}Stock`}
             type="number"
+            inputMode="numeric"
             min="0"
             step="1"
             defaultValue={stock}

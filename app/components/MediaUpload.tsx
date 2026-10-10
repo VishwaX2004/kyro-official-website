@@ -6,11 +6,12 @@ import { supabase } from "@/lib/supabase";
 type MediaUploadProps = {
   name: string;
   initialUrl?: string;
+  label?: string; // Optional label, defaults to "Fragrance portrait"
   onChange?: (url: string) => void;
   onUploadStateChange?: (uploading: boolean) => void;
 };
 
-export default function MediaUpload({ name, initialUrl = "", onChange, onUploadStateChange }: MediaUploadProps) {
+export default function MediaUpload({ name, initialUrl = "", label = "Fragrance portrait", onChange, onUploadStateChange }: MediaUploadProps) {
   const [url, setUrl] = useState(initialUrl);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState("");

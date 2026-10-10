@@ -323,6 +323,57 @@ export default function AccountPage() {
   const isAdmin = user.role?.toLowerCase() === "admin";
 
   // --------------------------------------------------
+  // Password strength calculation
+  // --------------------------------------------------
+  function calculatePasswordStrength(password: string): {
+    score: number;
+    label: string;
+    color: string;
+  } {
+    if (!password) return { score: 0, label: "", color: "" };
+
+    let score = 0;
+
+    // Length check (0-2 points)
+    if (password.length >= 8) score += 1;
+    if (password.length >= 12) score += 1;
+
+    // Uppercase check (1 point)
+    if (/[A-Z]/.test(password)) score += 1;
+
+    // Number check (1 point)
+    if (/\d/.test(password)) score += 1;
+
+    // Special character check (1 point)
+    if (/[^a-zA-Z0-9]/.test(password)) score += 1;
+
+    // Determine label and color
+    let label = "";
+    let color = "";
+
+    if (score <= 1) {
+      label = "Weak";
+      color = "#dc2626";
+    } else if (score <= 2) {
+      label = "Fair";
+      color = "#f59e0b";
+    } else if (score <= 3) {
+      label = "Good";
+      color = "#eab308";
+    } else if (score <= 4) {
+      label = "Strong";
+      color = "#84cc16";
+    } else {
+      label = "Very Strong";
+      color = "#22c55e";
+    }
+
+    return { score: Math.min(score, 5), label, color };
+  }
+
+  const passwordStrength = calculatePasswordStrength(newPasswordValue);
+
+  // --------------------------------------------------
   // Page
   // --------------------------------------------------
   return (
@@ -1202,6 +1253,7 @@ export default function AccountPage() {
                   initialUrl={profileImageUrl}
                   onChange={handleImageUrlChange}
                   onUploadStateChange={setImageUploading}
+                  label="Profile Photo"
                 />
               </div>
             )}
@@ -1319,6 +1371,7 @@ export default function AccountPage() {
                   initialUrl={profileImageUrl}
                   onChange={handleImageUrlChange}
                   onUploadStateChange={setImageUploading}
+                  label="Profile Photo"
                 />
               </div>
 
@@ -1421,6 +1474,22 @@ export default function AccountPage() {
                       {showNewPassword ? "👁" : "👁‍🗨"}
                     </button>
                   </div>
+                  {newPasswordValue && (
+                    <>
+                      <div className="password-strength">
+                        {[1, 2, 3, 4, 5].map((bar) => (
+                          <div
+                            key={bar}
+                            className={`strength-bar ${bar <= passwordStrength.score ? "filled" : ""}`}
+                            style={bar <= passwordStrength.score ? { background: passwordStrength.color } : {}}
+                          />
+                        ))}
+                      </div>
+                      <div className="password-strength-label" style={{ color: passwordStrength.color }}>
+                        {passwordStrength.label}
+                      </div>
+                    </>
+                  )}
                 </div>
               </div>
 
