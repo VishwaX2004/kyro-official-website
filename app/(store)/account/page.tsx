@@ -18,29 +18,24 @@ type ApiResponse = {
   message?: string;
 };
 
+type SettingsTab = "profile" | "security";
+
 export default function AccountPage() {
   const router = useRouter();
 
   const [user, setUser] = useState<User | null>(null);
-  const [loading, setLoading] = useState<boolean>(true);
+  const [loading, setLoading] = useState(true);
+  const [notice, setNotice] = useState("");
+  const [error, setError] = useState("");
+  const [savingProfile, setSavingProfile] = useState(false);
+  const [changingPassword, setChangingPassword] = useState(false);
+  const [profileImageUrl, setProfileImageUrl] = useState("");
+  const [imageUploading, setImageUploading] = useState(false);
+  const [showCurrentPassword, setShowCurrentPassword] = useState(false);
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [newPasswordValue, setNewPasswordValue] = useState("");
+  const [activeTab, setActiveTab] = useState<SettingsTab>("profile");
 
-  const [notice, setNotice] = useState<string>("");
-  const [error, setError] = useState<string>("");
-
-  const [savingProfile, setSavingProfile] = useState<boolean>(false);
-  const [changingPassword, setChangingPassword] = useState<boolean>(false);
-
-  const [profileImageUrl, setProfileImageUrl] = useState<string>(user?.imageUrl ?? "");
-  const [imageUploading, setImageUploading] = useState<boolean>(false);
-
-  const [showAvatarEditor, setShowAvatarEditor] = useState<boolean>(false);
-  const [showCurrentPassword, setShowCurrentPassword] = useState<boolean>(false);
-  const [showNewPassword, setShowNewPassword] = useState<boolean>(false);
-  const [newPasswordValue, setNewPasswordValue] = useState<string>("");
-
-  // --------------------------------------------------
-  // Load current user
-  // --------------------------------------------------
   useEffect(() => {
     let mounted = true;
 
@@ -71,7 +66,6 @@ export default function AccountPage() {
         }
       } catch (err) {
         console.error("Session loading error:", err);
-
         if (mounted) {
           setLoading(false);
           router.push("/login");
@@ -80,15 +74,11 @@ export default function AccountPage() {
     }
 
     loadSession();
-
     return () => {
       mounted = false;
     };
   }, [router]);
 
-  // --------------------------------------------------
-  // Handle avatar image change from MediaUpload
-  // --------------------------------------------------
   async function handleImageUrlChange(url: string) {
     setProfileImageUrl(url);
 
@@ -96,9 +86,7 @@ export default function AccountPage() {
       const response = await fetch("/api/account/profile", {
         method: "PATCH",
         credentials: "include",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           name: user?.name,
           email: user?.email,
@@ -107,13 +95,9 @@ export default function AccountPage() {
       });
 
       if (response.ok) {
-        setUser((currentUser) => {
-          if (!currentUser) return currentUser;
-          return {
-            ...currentUser,
-            imageUrl: url,
-          };
-        });
+        setUser((currentUser) =>
+          currentUser ? { ...currentUser, imageUrl: url } : currentUser
+        );
         toast.success("Profile photo updated");
       } else {
         toast.error("Failed to update profile photo");
@@ -124,19 +108,14 @@ export default function AccountPage() {
     }
   }
 
-  // --------------------------------------------------
-  // Update profile
-  // --------------------------------------------------
   async function updateProfile(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-
     setNotice("");
     setError("");
     setSavingProfile(true);
 
     try {
       const formData = new FormData(event.currentTarget);
-
       const name = String(formData.get("name") ?? "").trim();
       const email = String(formData.get("email") ?? "").trim();
 
@@ -153,9 +132,7 @@ export default function AccountPage() {
       const response = await fetch("/api/account/profile", {
         method: "PATCH",
         credentials: "include",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           name,
           email,
@@ -164,7 +141,6 @@ export default function AccountPage() {
       });
 
       let data: ApiResponse = {};
-
       try {
         data = (await response.json()) as ApiResponse;
       } catch {
@@ -178,18 +154,11 @@ export default function AccountPage() {
         return;
       }
 
-      setUser((currentUser) => {
-        if (!currentUser) {
-          return currentUser;
-        }
-
-        return {
-          ...currentUser,
-          name,
-          email,
-          imageUrl: profileImageUrl || null,
-        };
-      });
+      setUser((currentUser) =>
+        currentUser
+          ? { ...currentUser, name, email, imageUrl: profileImageUrl || null }
+          : currentUser
+      );
 
       const successMsg = data.message ?? "Your profile has been saved.";
       setNotice(successMsg);
@@ -204,12 +173,8 @@ export default function AccountPage() {
     }
   }
 
-  // --------------------------------------------------
-  // Update password
-  // --------------------------------------------------
   async function updatePassword(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-
     setNotice("");
     setError("");
     setChangingPassword(true);
@@ -218,14 +183,8 @@ export default function AccountPage() {
 
     try {
       const formData = new FormData(form);
-
-      const currentPassword = String(
-        formData.get("currentPassword") ?? ""
-      );
-
-      const newPassword = String(
-        formData.get("newPassword") ?? ""
-      );
+      const currentPassword = String(formData.get("currentPassword") ?? "");
+      const newPassword = String(formData.get("newPassword") ?? "");
 
       if (!currentPassword) {
         setError("Please enter your current password.");
@@ -238,26 +197,18 @@ export default function AccountPage() {
       }
 
       if (currentPassword === newPassword) {
-        setError(
-          "Your new password must be different from your current password."
-        );
+        setError("Your new password must be different from your current password.");
         return;
       }
 
       const response = await fetch("/api/account/password", {
         method: "PATCH",
         credentials: "include",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          currentPassword,
-          newPassword,
-        }),
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ currentPassword, newPassword }),
       });
 
       let data: ApiResponse = {};
-
       try {
         data = (await response.json()) as ApiResponse;
       } catch {
@@ -273,7 +224,6 @@ export default function AccountPage() {
 
       form.reset();
       setNewPasswordValue("");
-
       const successMsg = data.message ?? "Your password has been changed.";
       setNotice(successMsg);
       toast.success(successMsg);
@@ -287,1234 +237,243 @@ export default function AccountPage() {
     }
   }
 
-  // --------------------------------------------------
-  // Loading screen
-  // --------------------------------------------------
+  function calculatePasswordStrength(password: string) {
+    if (!password) return { score: 0, label: "", color: "" };
+
+    let score = 0;
+    if (password.length >= 8) score += 1;
+    if (password.length >= 12) score += 1;
+    if (/[A-Z]/.test(password)) score += 1;
+    if (/\d/.test(password)) score += 1;
+    if (/[^a-zA-Z0-9]/.test(password)) score += 1;
+
+    if (score <= 1) return { score, label: "Weak", color: "#dc2626" };
+    if (score <= 2) return { score, label: "Fair", color: "#f59e0b" };
+    if (score <= 3) return { score, label: "Good", color: "#ca8a04" };
+    if (score <= 4) return { score, label: "Strong", color: "#65a30d" };
+    return { score: 5, label: "Very strong", color: "#16a34a" };
+  }
+
   if (loading) {
     return (
-      <main className="account-loading">
-        <div className="account-loading-content">
-          <div className="account-spinner" />
-          <p>Opening your scent journal...</p>
-        </div>
+      <main className="account-state">
+        <div className="account-loader" />
+        <p>Loading your account settings...</p>
+        <style jsx>{`
+          .account-state{min-height:70vh;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;color:#6b665d;font:14px Arial,sans-serif}
+          .account-loader{width:38px;height:38px;border:3px solid #e9e3d8;border-top-color:#9a7843;border-radius:50%;animation:spin .8s linear infinite}
+          @keyframes spin{to{transform:rotate(360deg)}}
+        `}</style>
       </main>
     );
   }
 
-  // --------------------------------------------------
-  // User not available
-  // --------------------------------------------------
-  if (!user) {
-    return null;
-  }
+  if (!user) return null;
 
-  // --------------------------------------------------
-  // Initials
-  // --------------------------------------------------
   const initials =
-    user.name
-      ?.split(/\s+/)
-      .filter(Boolean)
-      .map((part) => part.charAt(0))
-      .join("")
-      .slice(0, 2)
-      .toUpperCase() || "KY";
-
+    user.name?.split(/\s+/).filter(Boolean).map((part) => part[0]).join("").slice(0, 2).toUpperCase() || "KY";
   const isAdmin = user.role?.toLowerCase() === "admin";
-
-  // --------------------------------------------------
-  // Password strength calculation
-  // --------------------------------------------------
-  function calculatePasswordStrength(password: string): {
-    score: number;
-    label: string;
-    color: string;
-  } {
-    if (!password) return { score: 0, label: "", color: "" };
-
-    let score = 0;
-
-    // Length check (0-2 points)
-    if (password.length >= 8) score += 1;
-    if (password.length >= 12) score += 1;
-
-    // Uppercase check (1 point)
-    if (/[A-Z]/.test(password)) score += 1;
-
-    // Number check (1 point)
-    if (/\d/.test(password)) score += 1;
-
-    // Special character check (1 point)
-    if (/[^a-zA-Z0-9]/.test(password)) score += 1;
-
-    // Determine label and color
-    let label = "";
-    let color = "";
-
-    if (score <= 1) {
-      label = "Weak";
-      color = "#dc2626";
-    } else if (score <= 2) {
-      label = "Fair";
-      color = "#f59e0b";
-    } else if (score <= 3) {
-      label = "Good";
-      color = "#eab308";
-    } else if (score <= 4) {
-      label = "Strong";
-      color = "#84cc16";
-    } else {
-      label = "Very Strong";
-      color = "#22c55e";
-    }
-
-    return { score: Math.min(score, 5), label, color };
-  }
-
   const passwordStrength = calculatePasswordStrength(newPasswordValue);
 
-  // --------------------------------------------------
-  // Page
-  // --------------------------------------------------
   return (
-    <main className="kyro-account-page">
-      <style
-        dangerouslySetInnerHTML={{
-          __html: `
-          .kyro-account-page {
-            --kyro-bg: #f8f6f0;
-            --kyro-surface: #fffefa;
-            --kyro-paper: #fbfaf7;
-            --kyro-ink: #171717;
-            --kyro-gold: #aa8953;
-            --kyro-gold-dark: #806537;
-            --kyro-gold-light: #a27d3f;
-            --kyro-muted: #777268;
-            --kyro-line: rgba(23, 23, 23, 0.10);
-            --kyro-line-gold: rgba(176, 141, 80, 0.20);
-
-            min-height: 100vh;
-            padding: 55px 24px 100px;
-            color: var(--kyro-ink);
-
-            background:
-              radial-gradient(
-                circle at 7% 8%,
-                rgba(170, 137, 83, 0.075),
-                transparent 25%
-              ),
-              radial-gradient(
-                circle at 94% 20%,
-                rgba(170, 137, 83, 0.055),
-                transparent 24%
-              ),
-              linear-gradient(
-                180deg,
-                #f8f6f0 0%,
-                #faf8f3 52%,
-                #f3eee5 100%
-              );
-
-            animation: kyroAccountPageReveal 0.7s ease both;
-          }
-
-          .kyro-account-container {
-            width: min(1180px, 100%);
-            margin: 0 auto;
-          }
-
-          .kyro-account-layout {
-            display: grid;
-            grid-template-columns: 1fr 340px;
-            gap: 22px;
-            align-items: start;
-          }
-
-          @media (max-width: 1024px) {
-            .kyro-account-layout {
-              grid-template-columns: 1fr;
-            }
-          }
-
-          /* =====================================================
-             AVATAR CARD (LEFT/TOP COLUMN)
-             ===================================================== */
-
-          .kyro-account-sidebar {
-            position: sticky;
-            top: 95px;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            text-align: center;
-
-            padding: 28px 24px;
-            border: 1px solid var(--kyro-line);
-            border-radius: 20px;
-            background: linear-gradient(
-              145deg,
-              rgba(255, 254, 250, 0.94),
-              rgba(246, 242, 233, 0.78)
-            );
-            box-shadow: 0 15px 40px rgba(30, 25, 18, 0.045);
-            backdrop-filter: blur(18px);
-
-            animation: kyroAccountCardIn 0.6s cubic-bezier(0.2, 0.8, 0.2, 1) both;
-            animation-delay: 0.1s;
-          }
-
-          @media (max-width: 1024px) {
-            .kyro-account-sidebar {
-              position: relative;
-              top: auto;
-              flex-direction: column;
-              align-items: center;
-            }
-          }
-
-          .account-avatar-wrapper {
-            position: relative;
-            margin-bottom: 20px;
-          }
-
-          .account-avatar {
-            position: relative;
-            width: 120px;
-            height: 120px;
-            border-radius: 50%;
-            border: 2px solid var(--kyro-gold);
-            background: radial-gradient(
-              circle at 50% 45%,
-              #ffffff 0%,
-              #f3eee5 58%,
-              #e7e1d5 100%
-            );
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: var(--kyro-gold-dark);
-            font-weight: 700;
-            font-size: 42px;
-            overflow: hidden;
-            margin: 0 auto;
-          }
-
-          .account-avatar img {
-            width: 100%;
-            height: 100%;
-            object-fit: cover;
-          }
-
-          .account-avatar-overlay {
-            position: absolute;
-            inset: 0;
-            border-radius: 50%;
-            background: rgba(23, 23, 23, 0.4);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            flex-direction: column;
-            gap: 8px;
-            cursor: pointer;
-            opacity: 0;
-            transition: opacity 0.3s ease;
-          }
-
-          .account-avatar:hover .account-avatar-overlay {
-            opacity: 1;
-          }
-
-          .account-avatar-overlay-icon {
-            font-size: 24px;
-            color: white;
-          }
-
-          .account-avatar-overlay-text {
-            font-size: 11px;
-            font-weight: 600;
-            color: white;
-            text-transform: uppercase;
-            letter-spacing: 0.08em;
-          }
-
-          .account-sidebar-name {
-            margin: 0 0 8px;
-            font-size: 20px;
-            font-weight: 650;
-            color: var(--kyro-ink);
-          }
-
-          .account-sidebar-email {
-            margin: 0 0 16px;
-            font-size: 12px;
-            color: var(--kyro-muted);
-            line-height: 1.5;
-          }
-
-          .account-role {
-            display: inline-block;
-            padding: 6px 12px;
-            border-radius: 999px;
-            background: rgba(176, 141, 80, 0.1);
-            color: var(--kyro-gold-dark);
-            font-size: 10px;
-            font-weight: 700;
-            letter-spacing: 0.08em;
-          }
-
-          .admin-kicker {
-            display: block;
-            margin-bottom: 12px;
-            color: var(--kyro-gold-dark);
-            font-size: 9px;
-            font-weight: 800;
-            letter-spacing: 0.22em;
-            text-transform: uppercase;
-          }
-
-          /* =====================================================
-             AVATAR EDITOR
-             ===================================================== */
-
-          .account-avatar-editor {
-            margin-top: 20px;
-            padding-top: 20px;
-            border-top: 1px solid var(--kyro-line);
-            width: 100%;
-          }
-
-          /* =====================================================
-             FORMS SECTION (RIGHT/BOTTOM COLUMN)
-             ===================================================== */
-
-          .kyro-account-forms {
-            display: flex;
-            flex-direction: column;
-            gap: 22px;
-          }
-
-          .account-intro {
-            animation: kyroAccountCardIn 0.6s cubic-bezier(0.2, 0.8, 0.2, 1) both;
-          }
-
-          .store-eyebrow {
-            display: inline-flex;
-            align-items: center;
-            gap: 8px;
-            margin: 0 0 12px;
-            color: var(--kyro-gold-dark);
-            font-size: 9px;
-            font-weight: 800;
-            letter-spacing: 0.22em;
-            text-transform: uppercase;
-          }
-
-          .store-eyebrow::before {
-            content: '';
-            width: 20px;
-            height: 1px;
-            background: var(--kyro-gold);
-          }
-
-          .account-intro h2 {
-            margin: 0 0 12px;
-            font-size: clamp(1.8rem, 4vw, 3.2rem);
-            line-height: 1.1;
-            letter-spacing: -0.045em;
-            font-weight: 500;
-          }
-
-          .account-intro h2 em {
-            font-family: Georgia, "Times New Roman", serif;
-            font-weight: 400;
-            color: var(--kyro-gold-dark);
-            font-style: italic;
-          }
-
-          .account-intro p {
-            margin: 0;
-            color: var(--kyro-muted);
-            font-size: 13px;
-            line-height: 1.75;
-          }
-
-          /* =====================================================
-             ALERTS
-             ===================================================== */
-
-          .account-alert {
-            display: flex;
-            align-items: flex-start;
-            gap: 12px;
-            padding: 14px 16px;
-            border: 1px solid;
-            border-radius: 14px;
-            font-size: 12px;
-            animation: kyroFadeUp 0.5s ease-out;
-          }
-
-          .account-alert.success {
-            border-color: rgba(34, 197, 94, 0.2);
-            background: rgba(34, 197, 94, 0.05);
-            color: #15803d;
-          }
-
-          .account-alert.error {
-            border-color: rgba(220, 38, 38, 0.2);
-            background: rgba(220, 38, 38, 0.05);
-            color: #991b1b;
-          }
-
-          .account-alert span {
-            flex: 0 0 auto;
-            font-weight: 700;
-          }
-
-          .account-alert p {
-            margin: 0;
-          }
-
-          /* =====================================================
-             FORM CARDS
-             ===================================================== */
-
-          .kyro-account-form {
-            padding: 28px;
-            border: 1px solid var(--kyro-line);
-            border-radius: 20px;
-            background: rgba(255, 254, 250, 0.9);
-            box-shadow: 0 15px 40px rgba(30, 25, 18, 0.045);
-            backdrop-filter: blur(18px);
-
-            animation: kyroFormSectionReveal 0.6s cubic-bezier(0.2, 0.8, 0.2, 1) both;
-          }
-
-          .kyro-account-form:nth-of-type(3) {
-            animation-delay: 0.1s;
-          }
-
-          .kyro-account-form:nth-of-type(4) {
-            animation-delay: 0.2s;
-          }
-
-          .account-form-header {
-            display: flex;
-            align-items: flex-start;
-            gap: 16px;
-            margin-bottom: 24px;
-            padding-bottom: 20px;
-            border-bottom: 1px solid var(--kyro-line);
-          }
-
-          .account-form-number {
-            flex: 0 0 auto;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            width: 44px;
-            height: 44px;
-            border-radius: 14px;
-            background: var(--kyro-ink);
-            color: white;
-            font-weight: 700;
-            font-size: 16px;
-          }
-
-          .account-form-title {
-            flex: 1;
-          }
-
-          .account-form-title h3 {
-            margin: 0 0 6px;
-            font-size: 18px;
-            font-weight: 650;
-            color: var(--kyro-ink);
-          }
-
-          .account-form-title p {
-            margin: 0;
-            font-size: 13px;
-            color: var(--kyro-muted);
-            line-height: 1.6;
-          }
-
-          /* =====================================================
-             FORM FIELDS
-             ===================================================== */
-
-          .form-field-group {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-            gap: 18px;
-            margin-bottom: 18px;
-          }
-
-          .form-field {
-            display: flex;
-            flex-direction: column;
-          }
-
-          .form-label {
-            display: block;
-            margin-bottom: 8px;
-            color: var(--kyro-ink);
-            font-size: 11px;
-            font-weight: 800;
-            letter-spacing: 0.14em;
-            text-transform: uppercase;
-          }
-
-          .form-label small {
-            font-weight: 400;
-            color: var(--kyro-muted);
-            letter-spacing: normal;
-            text-transform: none;
-            font-size: 10px;
-          }
-
-          .form-input-wrapper {
-            position: relative;
-            display: block;
-          }
-
-          .form-input {
-            width: 100%;
-            min-height: 44px;
-            padding: 11px 16px 11px 44px;
-            border: 1px solid var(--kyro-line);
-            border-radius: 12px;
-            background: rgba(255, 254, 250, 0.95);
-            color: var(--kyro-ink);
-            font-size: 13px;
-            line-height: 1.5;
-            outline: none;
-            transition: all 0.3s ease;
-          }
-
-          .form-input::placeholder {
-            color: var(--kyro-muted);
-            opacity: 0.6;
-          }
-
-          .form-input:hover {
-            border-color: rgba(176, 141, 80, 0.3);
-            background: white;
-          }
-
-          .form-input:focus {
-            border-color: var(--kyro-gold);
-            background: white;
-            box-shadow: 0 0 0 3px rgba(176, 141, 80, 0.15);
-          }
-
-          .form-input-icon {
-            position: absolute;
-            left: 14px;
-            top: 50%;
-            transform: translateY(-50%);
-            color: var(--kyro-gold-dark);
-            font-size: 16px;
-            pointer-events: none;
-          }
-
-          .form-input.has-toggle-icon {
-            padding-right: 44px;
-          }
-
-          .form-input-toggle {
-            position: absolute;
-            right: 14px;
-            top: 50%;
-            transform: translateY(-50%);
-            background: none;
-            border: none;
-            color: var(--kyro-gold-dark);
-            font-size: 16px;
-            cursor: pointer;
-            padding: 4px;
-            transition: color 0.2s ease;
-          }
-
-          .form-input-toggle:hover {
-            color: var(--kyro-gold);
-          }
-
-          /* =====================================================
-             BUTTONS
-             ===================================================== */
-
-          .account-save {
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            gap: 8px;
-            min-height: 44px;
-            padding: 0 24px;
-            border: none;
-            border-radius: 999px;
-            background: var(--kyro-ink);
-            color: white;
-            font-size: 12px;
-            font-weight: 800;
-            letter-spacing: 0.12em;
-            text-transform: uppercase;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            position: relative;
-            overflow: hidden;
-          }
-
-          .account-save::before {
-            content: '';
-            position: absolute;
-            left: -100%;
-            top: 0;
-            width: 50%;
-            height: 100%;
-            background: linear-gradient(
-              90deg,
-              transparent,
-              rgba(255, 255, 255, 0.2),
-              transparent
-            );
-            transform: skewX(-20deg);
-            transition: left 0.6s ease;
-          }
-
-          .account-save:hover::before {
-            left: 135%;
-          }
-
-          .account-save:hover {
-            transform: translateY(-2px);
-            background: #2b2b2b;
-            box-shadow: 0 10px 28px rgba(23, 23, 23, 0.15);
-          }
-
-          .account-save:active {
-            transform: translateY(0);
-          }
-
-          .account-save:disabled {
-            opacity: 0.6;
-            cursor: not-allowed;
-            transform: none;
-          }
-
-          .account-save.secondary {
-            background: transparent;
-            border: 1px solid rgba(176, 141, 80, 0.4);
-            color: var(--kyro-gold-dark);
-          }
-
-          .account-save.secondary:hover {
-            border-color: rgba(176, 141, 80, 0.7);
-            background: rgba(176, 141, 80, 0.08);
-            color: var(--kyro-gold-dark);
-          }
-
-          .button-spinner {
-            display: inline-block;
-            width: 14px;
-            height: 14px;
-            border: 2px solid rgba(255, 255, 255, 0.3);
-            border-top-color: white;
-            border-radius: 50%;
-            animation: spin 0.8s linear infinite;
-          }
-
-          .account-save.secondary .button-spinner {
-            border-color: rgba(128, 101, 55, 0.3);
-            border-top-color: var(--kyro-gold-dark);
-          }
-
-          @keyframes spin {
-            to {
-              transform: rotate(360deg);
-            }
-          }
-
-          /* =====================================================
-             PASSWORD STRENGTH INDICATOR
-             ===================================================== */
-
-          .password-strength {
-            margin-top: 8px;
-            display: flex;
-            gap: 4px;
-          }
-
-          .strength-bar {
-            flex: 1;
-            height: 2px;
-            border-radius: 1px;
-            background: var(--kyro-line);
-            transition: background 0.3s ease;
-          }
-
-          .strength-bar.filled {
-            background: var(--kyro-muted);
-          }
-
-          .password-strength-label {
-            margin-top: 6px;
-            font-size: 10px;
-            color: var(--kyro-muted);
-            transition: color 0.2s ease;
-          }
-
-          /* =====================================================
-             LOADING STATE
-             ===================================================== */
-
-          .account-loading {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            min-height: 100vh;
-            background: linear-gradient(
-              180deg,
-              #f8f6f0 0%,
-              #faf8f3 52%,
-              #f3eee5 100%
-            );
-          }
-
-          .account-loading-content {
-            text-align: center;
-          }
-
-          .account-spinner {
-            width: 48px;
-            height: 48px;
-            margin: 0 auto 16px;
-            border: 3px solid var(--kyro-line);
-            border-top-color: var(--kyro-gold);
-            border-radius: 50%;
-            animation: spin 1s linear infinite;
-          }
-
-          .account-loading p {
-            margin: 0;
-            color: var(--kyro-muted);
-            font-size: 13px;
-          }
-
-          /* =====================================================
-             MEDIA UPLOAD
-             ===================================================== */
-
-          .media-upload {
-            margin-bottom: 18px;
-          }
-
-          .media-upload-label {
-            display: block;
-            margin-bottom: 8px;
-            color: var(--kyro-ink);
-            font-size: 11px;
-            font-weight: 800;
-            letter-spacing: 0.14em;
-            text-transform: uppercase;
-          }
-
-          .media-dropzone {
-            position: relative;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            min-height: 140px;
-            padding: 20px;
-            border: 2px dashed var(--kyro-line);
-            border-radius: 16px;
-            background: rgba(255, 254, 250, 0.7);
-            cursor: pointer;
-            transition: all 0.3s ease;
-            overflow: hidden;
-          }
-
-          .media-dropzone:hover {
-            border-color: rgba(176, 141, 80, 0.4);
-            background: rgba(176, 141, 80, 0.02);
-          }
-
-          .media-dropzone.drag-active {
-            border-color: var(--kyro-gold);
-            background: rgba(176, 141, 80, 0.08);
-          }
-
-          .media-dropzone.has-image {
-            border-style: solid;
-            border-width: 1px;
-            background: rgba(255, 254, 250, 0.9);
-            min-height: auto;
-          }
-
-          .media-preview {
-            position: absolute;
-            inset: 0;
-            background-size: cover;
-            background-position: center;
-            border-radius: 14px;
-            opacity: 0.3;
-          }
-
-          .media-placeholder {
-            font-size: 32px;
-            color: var(--kyro-gold);
-            margin-right: 12px;
-          }
-
-          .media-copy {
-            display: flex;
-            flex-direction: column;
-            text-align: center;
-            pointer-events: none;
-          }
-
-          .media-copy strong {
-            display: block;
-            margin-bottom: 4px;
-            color: var(--kyro-ink);
-            font-size: 13px;
-            font-weight: 600;
-          }
-
-          .media-copy small {
-            display: block;
-            color: var(--kyro-muted);
-            font-size: 11px;
-            line-height: 1.5;
-          }
-
-          .media-error {
-            display: block;
-            margin-top: 8px;
-            color: #991b1b;
-            font-size: 11px;
-          }
-
-          .media-dropzone input[type="file"] {
-            display: none;
-          }
-
-          /* =====================================================
-             MOBILE RESPONSIVE
-             ===================================================== */
-
-          @media (max-width: 1024px) {
-            .kyro-account-page {
-              padding: 45px 20px 80px;
-            }
-
-            .form-field-group {
-              grid-template-columns: 1fr;
-            }
-          }
-
-          @media (max-width: 640px) {
-            .kyro-account-page {
-              padding: 40px 16px 60px;
-            }
-
-            .kyro-account-form {
-              padding: 20px 16px;
-            }
-
-            .account-form-header {
-              flex-direction: column;
-            }
-
-            .account-form-number {
-              align-self: flex-start;
-            }
-
-            .form-label {
-              font-size: 10px;
-            }
-
-            .form-input {
-              min-height: 44px;
-            }
-
-            .account-avatar {
-              width: 96px;
-              height: 96px;
-              font-size: 36px;
-            }
-
-            .account-sidebar-name {
-              font-size: 18px;
-            }
-
-            .account-intro h2 {
-              font-size: clamp(1.4rem, 3vw, 2rem);
-            }
-          }
-
-          /* =====================================================
-             KEYFRAME ANIMATIONS
-             ===================================================== */
-
-          @keyframes kyroAccountPageReveal {
-            from {
-              opacity: 0;
-              transform: translateY(20px);
-            }
-            to {
-              opacity: 1;
-              transform: translateY(0);
-            }
-          }
-
-          @keyframes kyroAccountCardIn {
-            0% {
-              opacity: 0;
-              transform: translateY(-12px) scale(0.98);
-              filter: blur(1px);
-            }
-            100% {
-              opacity: 1;
-              transform: translateY(0) scale(1);
-              filter: blur(0);
-            }
-          }
-
-          @keyframes kyroFormSectionReveal {
-            0% {
-              opacity: 0;
-              transform: translateY(14px) scale(0.98);
-              filter: blur(1px);
-            }
-            100% {
-              opacity: 1;
-              transform: translateY(0) scale(1);
-              filter: blur(0);
-            }
-          }
-
-          @keyframes kyroFadeUp {
-            from {
-              opacity: 0;
-              transform: translateY(12px);
-            }
-            to {
-              opacity: 1;
-              transform: translateY(0);
-            }
-          }
-          `,
-        }}
-      />
-
-      <section className="kyro-account-container">
-        <div className="kyro-account-layout">
-          {/* ============================================
-              AVATAR SIDEBAR
-          ============================================ */}
-          <aside className="kyro-account-sidebar">
-            <div className="account-avatar-wrapper">
-              <div className="account-avatar">
+    <main className="kyro-settings">
+      <style jsx global>{`
+        .kyro-settings{--ink:#211f1b;--muted:#777166;--gold:#987442;--line:#e9e4da;--paper:#fffefa;min-height:100vh;padding:44px 20px 76px;background:#f7f5f0;color:var(--ink);font-family:Arial,Helvetica,sans-serif}
+        .kyro-settings *{box-sizing:border-box}
+        .settings-wrap{width:min(1040px,100%);margin:0 auto}
+        .settings-heading{margin-bottom:28px}
+        .settings-eyebrow{margin:0 0 9px;color:var(--gold);font-size:11px;font-weight:800;letter-spacing:.16em;text-transform:uppercase}
+        .settings-heading h1{margin:0;font-size:clamp(28px,4vw,40px);letter-spacing:-.04em;font-weight:700}
+        .settings-heading p{margin:10px 0 0;color:var(--muted);font-size:14px;line-height:1.65}
+        .settings-grid{display:grid;grid-template-columns:280px minmax(0,1fr);gap:22px;align-items:start}
+        .settings-card{border:1px solid var(--line);border-radius:18px;background:var(--paper);box-shadow:0 8px 28px #2b241408}
+        .settings-profile{padding:24px 20px;text-align:center;position:sticky;top:24px}
+        .settings-avatar{width:88px;height:88px;border-radius:50%;margin:0 auto 14px;position:relative;overflow:hidden;display:flex;align-items:center;justify-content:center;background:#eee6d8;border:2px solid #d6c29f;color:#775a2f;font-size:28px;font-weight:700}
+        .settings-avatar img{object-fit:cover}
+        .settings-profile h2{margin:0 0 7px;font-size:18px;overflow-wrap:anywhere}
+        .settings-profile-email{margin:0 auto 14px;color:var(--muted);font-size:13px;line-height:1.5;overflow-wrap:anywhere}
+        .settings-role{display:inline-flex;border-radius:99px;padding:6px 10px;background:#f2ecdf;color:#755b31;font-size:11px;font-weight:700}
+        .settings-divider{height:1px;background:var(--line);margin:22px 0}
+        .settings-nav{display:grid;gap:8px}
+        .settings-nav button{width:100%;border:1px solid transparent;border-radius:11px;background:transparent;display:flex;align-items:center;gap:11px;padding:12px 13px;text-align:left;color:#625d53;font-size:14px;font-weight:600;cursor:pointer;transition:.18s}
+        .settings-nav button:hover{background:#f8f5ee}
+        .settings-nav button[aria-selected="true"]{border-color:#e5d8c1;background:#f6f0e5;color:#594321}
+        .nav-icon{width:30px;height:30px;display:grid;place-items:center;border-radius:9px;background:#f0ece4;font-size:16px}
+        .settings-main{min-width:0}
+        .settings-panel{padding:28px}
+        .panel-heading{display:flex;align-items:flex-start;gap:13px;margin-bottom:25px;padding-bottom:20px;border-bottom:1px solid var(--line)}
+        .panel-icon{flex:0 0 42px;width:42px;height:42px;border-radius:12px;display:grid;place-items:center;background:#f2ecdf;color:#795d32;font-size:19px}
+        .panel-heading h2{margin:1px 0 6px;font-size:20px;letter-spacing:-.02em}
+        .panel-heading p{margin:0;color:var(--muted);font-size:13px;line-height:1.6}
+        .field-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:19px}
+        .field{min-width:0;display:flex;flex-direction:column;gap:8px;margin-bottom:20px}
+        .field label{font-size:13px;font-weight:700;color:#353128}
+        .field-help{font-size:12px;color:var(--muted);font-weight:400}
+        .settings-input-wrap{position:relative}
+        .settings-input{width:100%;height:47px;border:1px solid #ded8cc;border-radius:10px;background:#fff;padding:0 13px;color:var(--ink);font-size:14px;outline:none;transition:border-color .18s,box-shadow .18s}
+        .settings-input:focus{border-color:#a98a58;box-shadow:0 0 0 3px #a98a581f}
+        .settings-input::placeholder{color:#aaa397}
+        .settings-input.password-input{padding-right:75px}
+        .password-toggle{position:absolute;right:9px;top:50%;transform:translateY(-50%);border:0;background:transparent;color:#795d32;padding:6px;font-size:12px;font-weight:700;cursor:pointer}
+        .settings-actions{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-top:5px;padding-top:18px;border-top:1px solid var(--line)}
+        .settings-note{max-width:320px;color:var(--muted);font-size:12px;line-height:1.6}
+        .settings-button{min-height:45px;padding:0 19px;border:1px solid #211f1b;border-radius:10px;background:#211f1b;color:#fff;font-size:13px;font-weight:700;display:inline-flex;align-items:center;justify-content:center;gap:9px;cursor:pointer;transition:.18s}
+        .settings-button:hover{background:#403b32;transform:translateY(-1px)}
+        .settings-button:disabled{opacity:.55;cursor:not-allowed;transform:none}
+        .settings-button.secondary{background:#fffefa;border-color:#ded3c0;color:#72572e}
+        .settings-button.secondary:hover{background:#f7f1e7}
+        .settings-alert{display:flex;gap:10px;align-items:flex-start;padding:13px 15px;border-radius:11px;font-size:13px;line-height:1.5;margin-bottom:18px}
+        .settings-alert.success{border:1px solid #c9e8d1;background:#f0fbf2;color:#176534}
+        .settings-alert.error{border:1px solid #f0cccc;background:#fff4f4;color:#9b2424}
+        .upload-block{padding:17px;border:1px solid var(--line);border-radius:12px;background:#fcfaf6;margin-bottom:22px}
+        .upload-block-title{margin:0 0 5px;font-size:13px;font-weight:700}
+        .upload-block-description{margin:0 0 14px;color:var(--muted);font-size:12px;line-height:1.5}
+        .password-rules{display:flex;gap:5px;margin-top:9px}
+        .password-bar{height:4px;flex:1;border-radius:5px;background:#e9e4da}
+        .password-strength-label{font-size:12px;font-weight:700;margin-top:7px}
+        .security-tip{display:flex;gap:11px;padding:13px 14px;border-radius:11px;background:#f7f3eb;color:#6f5a38;font-size:12px;line-height:1.6;margin-bottom:22px}
+        .settings-spinner{width:15px;height:15px;border:2px solid #ffffff70;border-top-color:#fff;border-radius:50%;animation:settingsSpin .7s linear infinite}
+        @keyframes settingsSpin{to{transform:rotate(360deg)}}
+        @media(max-width:760px){.kyro-settings{padding:28px 14px 50px}.settings-grid{grid-template-columns:1fr}.settings-profile{position:static;padding:19px}.settings-profile-top{display:flex;align-items:center;gap:14px;text-align:left}.settings-avatar{width:64px;height:64px;flex:0 0 64px;margin:0}.settings-profile h2{font-size:16px}.settings-profile-email{margin:5px 0 8px}.settings-divider{margin:17px 0}.settings-nav{grid-template-columns:repeat(2,minmax(0,1fr))}.settings-nav button{padding:9px;font-size:12px}.nav-icon{width:27px;height:27px;flex:0 0 27px}.settings-panel{padding:21px 17px}.field-grid{grid-template-columns:1fr;gap:0}.panel-heading h2{font-size:18px}}
+        @media(max-width:420px){.settings-nav button{gap:7px}.settings-nav button span:last-child{line-height:1.3}.settings-actions{align-items:stretch}.settings-actions .settings-button{width:100%}.settings-note{max-width:none}}
+        @media(prefers-reduced-motion:reduce){.kyro-settings *{animation:none!important;transition:none!important}}
+      `}</style>
+
+      <div className="settings-wrap">
+        <header className="settings-heading">
+          <p className="settings-eyebrow">KYRO PARFUMS · ACCOUNT</p>
+          <h1>Account settings</h1>
+          <p>Manage your personal details and security in one simple place.</p>
+        </header>
+
+        <div className="settings-grid">
+          <aside className="settings-card settings-profile">
+            <div className="settings-profile-top">
+              <div className="settings-avatar">
                 {profileImageUrl ? (
-                  <Image
-                    src={profileImageUrl}
-                    alt={`${user.name}'s profile`}
-                    fill
-                    sizes="120px"
-                    style={{ objectFit: "cover" }}
-                  />
+                  <Image src={profileImageUrl} alt={`${user.name}'s profile`} fill sizes="88px" />
                 ) : (
                   <span>{initials}</span>
                 )}
-                <div
-                  className="account-avatar-overlay"
-                  onClick={() => setShowAvatarEditor(!showAvatarEditor)}
-                >
-                  <div className="account-avatar-overlay-icon">📷</div>
-                  <div className="account-avatar-overlay-text">Change Photo</div>
-                </div>
+              </div>
+              <div>
+                <h2>{user.name}</h2>
+                <p className="settings-profile-email">{user.email}</p>
+                <span className="settings-role">{isAdmin ? "Administrator" : "Scent collector"}</span>
               </div>
             </div>
 
-            <span className="admin-kicker">YOUR SCENT JOURNAL</span>
-
-            <h2 className="account-sidebar-name">{user.name}</h2>
-
-            <p className="account-sidebar-email">{user.email}</p>
-
-            <span className="account-role">
-              {isAdmin ? "Administrator" : "Scent collector"}
-            </span>
-
-            {showAvatarEditor && (
-              <div className="account-avatar-editor">
-                <MediaUpload
-                  name="profileImageUrl"
-                  initialUrl={profileImageUrl}
-                  onChange={handleImageUrlChange}
-                  onUploadStateChange={setImageUploading}
-                  label="Profile Photo"
-                />
-              </div>
-            )}
+            <div className="settings-divider" />
+            <nav className="settings-nav" aria-label="Account settings sections">
+              <button type="button" aria-selected={activeTab === "profile"} onClick={() => { setActiveTab("profile"); setNotice(""); setError(""); }}>
+                <span className="nav-icon">♙</span><span>Personal details</span>
+              </button>
+              <button type="button" aria-selected={activeTab === "security"} onClick={() => { setActiveTab("security"); setNotice(""); setError(""); }}>
+                <span className="nav-icon">⌑</span><span>Password & security</span>
+              </button>
+            </nav>
           </aside>
 
-          {/* ============================================
-              MAIN FORMS
-          ============================================ */}
-          <div className="kyro-account-forms">
-            {/* INTRO */}
-            <div className="account-intro">
-              <p className="store-eyebrow">THE PRIVATE EDIT</p>
-              <h2>
-                Make your account feel like <em>you.</em>
-              </h2>
-              <p>
-                Manage your profile, protect your account, and keep your fragrance journey close.
-              </p>
-            </div>
-
-            {/* ==========================================
-                ALERTS
-            ========================================== */}
-            {notice && (
-              <div className="account-alert success" role="status">
-                <span>✓</span>
-                <p>{notice}</p>
+          <section className="settings-main">
+            {(notice || error) && (
+              <div className={`settings-alert ${error ? "error" : "success"}`} role={error ? "alert" : "status"}>
+                <strong>{error ? "!" : "✓"}</strong>
+                <span>{error || notice}</span>
               </div>
             )}
 
-            {error && (
-              <div className="account-alert error" role="alert">
-                <span>!</span>
-                <p>{error}</p>
-              </div>
-            )}
-
-            {/* ==========================================
-                PROFILE FORM
-            ========================================== */}
-            <form className="kyro-account-form" onSubmit={updateProfile}>
-              <div className="account-form-header">
-                <div className="account-form-number">01</div>
-                <div className="account-form-title">
-                  <h3>Personal Details</h3>
-                  <p>The name and email attached to your Kyro account.</p>
-                </div>
-              </div>
-
-              <div className="form-field-group">
-                <div className="form-field">
-                  <label className="form-label">
-                    Display name
-                  </label>
-                  <div className="form-input-wrapper">
-                    <svg
-                      className="form-input-icon"
-                      width="16"
-                      height="16"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                    >
-                      <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
-                      <circle cx="12" cy="7" r="4"></circle>
-                    </svg>
-                    <input
-                      className="form-input"
-                      name="name"
-                      type="text"
-                      defaultValue={user.name}
-                      placeholder="Your name"
-                      autoComplete="name"
-                      required
-                      minLength={2}
-                    />
+            {activeTab === "profile" ? (
+              <form className="settings-card settings-panel" onSubmit={updateProfile}>
+                <div className="panel-heading">
+                  <div className="panel-icon">♙</div>
+                  <div>
+                    <h2>Personal details</h2>
+                    <p>Keep your name and email address up to date.</p>
                   </div>
                 </div>
 
-                <div className="form-field">
-                  <label className="form-label">
-                    Email address
-                  </label>
-                  <div className="form-input-wrapper">
-                    <svg
-                      className="form-input-icon"
-                      width="16"
-                      height="16"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                    >
-                      <rect x="2" y="4" width="20" height="16" rx="2"></rect>
-                      <path d="m10 9 5 3.5L20 9"></path>
-                    </svg>
-                    <input
-                      className="form-input"
-                      name="email"
-                      type="email"
-                      defaultValue={user.email}
-                      placeholder="you@example.com"
-                      autoComplete="email"
-                      required
-                    />
+                <div className="field-grid">
+                  <div className="field">
+                    <label htmlFor="account-name">Display name</label>
+                    <input id="account-name" className="settings-input" name="name" type="text" defaultValue={user.name} placeholder="Your full name" autoComplete="name" minLength={2} required />
                   </div>
-                </div>
-              </div>
-
-              <div className="form-field">
-                <label className="form-label">Profile Photo</label>
-                <MediaUpload
-                  name="profileImageUrl"
-                  initialUrl={profileImageUrl}
-                  onChange={handleImageUrlChange}
-                  onUploadStateChange={setImageUploading}
-                  label="Profile Photo"
-                />
-              </div>
-
-              <button
-                className="account-save"
-                type="submit"
-                disabled={savingProfile || imageUploading}
-              >
-                {savingProfile ? (
-                  <>
-                    Saving...
-                    <span className="button-spinner" />
-                  </>
-                ) : (
-                  <>
-                    Save profile
-                    <span>→</span>
-                  </>
-                )}
-              </button>
-            </form>
-
-            {/* ==========================================
-                PASSWORD FORM
-            ========================================== */}
-            <form className="kyro-account-form" onSubmit={updatePassword}>
-              <div className="account-form-header">
-                <div className="account-form-number">02</div>
-                <div className="account-form-title">
-                  <h3>Account Security</h3>
-                  <p>Change your password whenever you need to.</p>
-                </div>
-              </div>
-
-              <div className="form-field-group">
-                <div className="form-field">
-                  <label className="form-label">Current password</label>
-                  <div className="form-input-wrapper">
-                    <svg
-                      className="form-input-icon"
-                      width="16"
-                      height="16"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                    >
-                      <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
-                      <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
-                    </svg>
-                    <input
-                      className="form-input has-toggle-icon"
-                      name="currentPassword"
-                      type={showCurrentPassword ? "text" : "password"}
-                      placeholder="Enter current password"
-                      autoComplete="current-password"
-                      required
-                    />
-                    <button
-                      type="button"
-                      className="form-input-toggle"
-                      onClick={() => setShowCurrentPassword(!showCurrentPassword)}
-                    >
-                      {showCurrentPassword ? "👁" : "👁‍🗨"}
-                    </button>
+                  <div className="field">
+                    <label htmlFor="account-email">Email address</label>
+                    <input id="account-email" className="settings-input" name="email" type="email" defaultValue={user.email} placeholder="you@example.com" autoComplete="email" required />
                   </div>
                 </div>
 
-                <div className="form-field">
-                  <label className="form-label">New password</label>
-                  <div className="form-input-wrapper">
-                    <svg
-                      className="form-input-icon"
-                      width="16"
-                      height="16"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                    >
-                      <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
-                      <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
-                    </svg>
-                    <input
-                      className="form-input has-toggle-icon"
-                      name="newPassword"
-                      type={showNewPassword ? "text" : "password"}
-                      placeholder="Minimum 8 characters"
-                      autoComplete="new-password"
-                      minLength={8}
-                      required
-                      value={newPasswordValue}
-                      onChange={(e) => setNewPasswordValue(e.target.value)}
-                    />
-                    <button
-                      type="button"
-                      className="form-input-toggle"
-                      onClick={() => setShowNewPassword(!showNewPassword)}
-                    >
-                      {showNewPassword ? "👁" : "👁‍🗨"}
-                    </button>
+                <div className="upload-block">
+                  <p className="upload-block-title">Profile photo</p>
+                  <p className="upload-block-description">Choose a clear image so you can recognize your account easily.</p>
+                  <MediaUpload
+                    name="profileImageUrl"
+                    initialUrl={profileImageUrl}
+                    onChange={handleImageUrlChange}
+                    onUploadStateChange={setImageUploading}
+                    label="Upload profile photo"
+                  />
+                </div>
+
+                <div className="settings-actions">
+                  <p className="settings-note">Your updated details will be used for your account profile.</p>
+                  <button className="settings-button" type="submit" disabled={savingProfile || imageUploading}>
+                    {savingProfile ? <><span className="settings-spinner" /> Saving changes...</> : imageUploading ? "Uploading photo..." : <>Save changes <span aria-hidden="true">→</span></>}
+                  </button>
+                </div>
+              </form>
+            ) : (
+              <form className="settings-card settings-panel" onSubmit={updatePassword}>
+                <div className="panel-heading">
+                  <div className="panel-icon">⌑</div>
+                  <div>
+                    <h2>Password & security</h2>
+                    <p>Choose a strong password to help protect your account.</p>
+                  </div>
+                </div>
+
+                <div className="security-tip">
+                  <span aria-hidden="true">ⓘ</span>
+                  <span>Use at least 8 characters. A mix of uppercase letters, numbers, and symbols makes your password harder to guess.</span>
+                </div>
+
+                <div className="field">
+                  <label htmlFor="current-password">Current password</label>
+                  <div className="settings-input-wrap">
+                    <input id="current-password" className="settings-input password-input" name="currentPassword" type={showCurrentPassword ? "text" : "password"} placeholder="Enter your current password" autoComplete="current-password" required />
+                    <button className="password-toggle" type="button" onClick={() => setShowCurrentPassword((value) => !value)} aria-label={showCurrentPassword ? "Hide current password" : "Show current password"}>{showCurrentPassword ? "Hide" : "Show"}</button>
+                  </div>
+                </div>
+
+                <div className="field">
+                  <label htmlFor="new-password">New password <span className="field-help">· Minimum 8 characters</span></label>
+                  <div className="settings-input-wrap">
+                    <input id="new-password" className="settings-input password-input" name="newPassword" type={showNewPassword ? "text" : "password"} placeholder="Create a new password" autoComplete="new-password" minLength={8} required value={newPasswordValue} onChange={(event) => setNewPasswordValue(event.target.value)} />
+                    <button className="password-toggle" type="button" onClick={() => setShowNewPassword((value) => !value)} aria-label={showNewPassword ? "Hide new password" : "Show new password"}>{showNewPassword ? "Hide" : "Show"}</button>
                   </div>
                   {newPasswordValue && (
                     <>
-                      <div className="password-strength">
+                      <div className="password-rules" aria-label={`Password strength: ${passwordStrength.label}`}>
                         {[1, 2, 3, 4, 5].map((bar) => (
-                          <div
-                            key={bar}
-                            className={`strength-bar ${bar <= passwordStrength.score ? "filled" : ""}`}
-                            style={bar <= passwordStrength.score ? { background: passwordStrength.color } : {}}
-                          />
+                          <span key={bar} className="password-bar" style={bar <= passwordStrength.score ? { background: passwordStrength.color } : undefined} />
                         ))}
                       </div>
-                      <div className="password-strength-label" style={{ color: passwordStrength.color }}>
-                        {passwordStrength.label}
-                      </div>
+                      <div className="password-strength-label" style={{ color: passwordStrength.color }}>{passwordStrength.label}</div>
                     </>
                   )}
                 </div>
-              </div>
 
-              <button
-                className="account-save secondary"
-                type="submit"
-                disabled={changingPassword}
-              >
-                {changingPassword ? (
-                  <>
-                    Updating...
-                    <span className="button-spinner" />
-                  </>
-                ) : (
-                  <>
-                    Update password
-                    <span>→</span>
-                  </>
-                )}
-              </button>
-            </form>
-          </div>
+                <div className="settings-actions">
+                  <p className="settings-note">You will need your current password to make this change.</p>
+                  <button className="settings-button" type="submit" disabled={changingPassword}>
+                    {changingPassword ? <><span className="settings-spinner" /> Updating password...</> : <>Update password <span aria-hidden="true">→</span></>}
+                  </button>
+                </div>
+              </form>
+            )}
+          </section>
         </div>
-      </section>
+      </div>
     </main>
   );
 }
-
