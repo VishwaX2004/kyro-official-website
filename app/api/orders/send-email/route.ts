@@ -132,211 +132,308 @@ export async function POST(request: Request) {
       day: "numeric",
     });
 
-    // Customer Email HTML
+    // Customer Email HTML - Optimized for inbox delivery
     const customerEmailHtml = `
       <!DOCTYPE html>
       <html>
       <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Order Confirmation</title>
       </head>
       <body style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; line-height: 1.6; color: #171717; margin: 0; padding: 0; background: #f8f6f0;">
-        <div style="max-width: 600px; margin: 0 auto; padding: 40px 20px;">
-          <!-- Header -->
-          <div style="text-align: center; margin-bottom: 40px; padding-bottom: 20px; border-bottom: 2px solid #aa8953;">
-            <h1 style="margin: 0; font-size: 32px; color: #aa8953; font-weight: 600;">Kyro Fragrances</h1>
-            <p style="margin: 8px 0 0; color: #777268; font-size: 13px;">Luxury Perfume Decants</p>
-          </div>
-
-          <!-- Greeting -->
-          <div style="margin-bottom: 30px;">
-            <h2 style="margin: 0 0 12px; font-size: 24px; color: #171717;">Order Confirmed ✓</h2>
-            <p style="margin: 0; color: #777268; font-size: 14px;">Thank you for choosing Kyro. Your order has been received and is being processed.</p>
-          </div>
-
-          <!-- Order Summary Card -->
-          <div style="background: #fffefa; border: 1px solid rgba(170, 137, 83, 0.2); border-radius: 12px; padding: 20px; margin-bottom: 30px;">
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 15px;">
-              <div>
-                <p style="margin: 0; font-size: 11px; color: #806537; text-transform: uppercase; font-weight: 700; letter-spacing: 0.1em;">Order ID</p>
-                <p style="margin: 5px 0 0; font-size: 16px; color: #171717; font-weight: 600;">${order.displayOrderId}</p>
-              </div>
-              <div>
-                <p style="margin: 0; font-size: 11px; color: #806537; text-transform: uppercase; font-weight: 700; letter-spacing: 0.1em;">Order Date</p>
-                <p style="margin: 5px 0 0; font-size: 16px; color: #171717; font-weight: 600;">${orderDate}</p>
-              </div>
-            </div>
-          </div>
-
-          <!-- Items Table -->
-          <div style="margin-bottom: 30px;">
-            <h3 style="margin: 0 0 15px; font-size: 14px; color: #806537; text-transform: uppercase; font-weight: 700; letter-spacing: 0.1em;">Order Items</h3>
-            <table style="width: 100%; border-collapse: collapse;">
-              <thead>
-                <tr style="border-bottom: 2px solid #aa8953;">
-                  <th style="padding: 12px; text-align: left; font-size: 12px; font-weight: 700; color: #171717;">Product</th>
-                  <th style="padding: 12px; text-align: center; font-size: 12px; font-weight: 700; color: #171717;">Qty</th>
-                  <th style="padding: 12px; text-align: right; font-size: 12px; font-weight: 700; color: #171717;">Price</th>
-                  <th style="padding: 12px; text-align: right; font-size: 12px; font-weight: 700; color: #171717;">Subtotal</th>
+        <table width="100%" cellpadding="0" cellspacing="0" style="background: #f8f6f0;">
+          <tr>
+            <td align="center">
+              <table width="600" cellpadding="0" cellspacing="0" style="max-width: 600px; width: 100%;">
+                <!-- Header -->
+                <tr>
+                  <td style="padding: 40px 20px; text-align: center; border-bottom: 2px solid #aa8953; background: #fffefa;">
+                    <h1 style="margin: 0; font-size: 28px; color: #aa8953; font-weight: 600; font-family: Georgia, serif;">Kyro Fragrances</h1>
+                    <p style="margin: 8px 0 0; color: #777268; font-size: 12px;">Premium Fragrance Decants</p>
+                  </td>
                 </tr>
-              </thead>
-              <tbody>
-                ${itemsTableHtml}
-              </tbody>
-            </table>
-          </div>
 
-          <!-- Total -->
-          <div style="text-align: right; margin-bottom: 30px; padding: 20px; background: rgba(170, 137, 83, 0.05); border-radius: 8px;">
-            <p style="margin: 0; font-size: 14px; color: #777268;">Total Amount</p>
-            <p style="margin: 8px 0 0; font-size: 28px; color: #aa8953; font-weight: 700;">Rs ${order.total.toLocaleString("en-LK")}</p>
-          </div>
+                <!-- Greeting -->
+                <tr>
+                  <td style="padding: 30px 20px; background: #fffefa;">
+                    <h2 style="margin: 0 0 12px; font-size: 22px; color: #171717; font-family: Georgia, serif;">Order Confirmed</h2>
+                    <p style="margin: 0; color: #777268; font-size: 13px;">Hi ${order.delivery_address?.name?.split(" ")[0] || "Valued Customer"},</p>
+                    <p style="margin: 12px 0 0; color: #777268; font-size: 13px;">Thank you for your purchase. We have received your order and will begin processing it shortly.</p>
+                  </td>
+                </tr>
 
-          <!-- Delivery Address -->
-          ${
-            order.delivery_address
-              ? `
-          <div style="margin-bottom: 30px;">
-            <h3 style="margin: 0 0 12px; font-size: 14px; color: #806537; text-transform: uppercase; font-weight: 700; letter-spacing: 0.1em;">Delivery Address</h3>
-            <div style="background: #fbfaf7; border: 1px solid rgba(170, 137, 83, 0.15); border-radius: 8px; padding: 15px;">
-              <p style="margin: 0 0 8px; font-size: 13px; color: #171717;"><strong>${order.delivery_address.name}</strong></p>
-              <p style="margin: 0 0 6px; font-size: 12px; color: #777268;">${order.delivery_address.street}</p>
-              <p style="margin: 0 0 6px; font-size: 12px; color: #777268;">${order.delivery_address.city}, ${order.delivery_address.postalCode}</p>
-              <p style="margin: 0 0 6px; font-size: 12px; color: #777268;">${order.delivery_address.country}</p>
-              <p style="margin: 8px 0 0; font-size: 12px; color: #777268;">Phone: ${order.delivery_address.phone}</p>
-            </div>
-          </div>
-          `
-              : ""
-          }
+                <!-- Order Summary Card -->
+                <tr>
+                  <td style="padding: 0 20px 30px;">
+                    <table width="100%" cellpadding="0" cellspacing="0" style="background: #fbfaf7; border: 1px solid rgba(170, 137, 83, 0.2); border-radius: 12px; padding: 20px;">
+                      <tr>
+                        <td width="50%" style="padding: 10px 0;">
+                          <p style="margin: 0; font-size: 10px; color: #806537; text-transform: uppercase; font-weight: 700; letter-spacing: 0.1em;">Order Number</p>
+                          <p style="margin: 5px 0 0; font-size: 15px; color: #171717; font-weight: 600;">${order.displayOrderId}</p>
+                        </td>
+                        <td width="50%" style="padding: 10px 0; text-align: right;">
+                          <p style="margin: 0; font-size: 10px; color: #806537; text-transform: uppercase; font-weight: 700; letter-spacing: 0.1em;">Order Date</p>
+                          <p style="margin: 5px 0 0; font-size: 15px; color: #171717; font-weight: 600;">${orderDate}</p>
+                        </td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
 
-          <!-- Bank Details -->
-          <div style="margin-bottom: 30px;">
-            <h3 style="margin: 0 0 12px; font-size: 14px; color: #806537; text-transform: uppercase; font-weight: 700; letter-spacing: 0.1em;">Bank Transfer Details</h3>
-            <div style="background: #fbfaf7; border: 1px solid rgba(170, 137, 83, 0.15); border-radius: 8px; padding: 15px; font-family: 'Courier New', monospace; font-size: 12px;">
-              <p style="margin: 0 0 8px;"><strong>Bank:</strong> People's Bank</p>
-              <p style="margin: 0 0 8px;"><strong>Account Name:</strong> Kyro Fragrances</p>
-              <p style="margin: 0 0 8px;"><strong>Account Number:</strong> 212-1-002-3-0030826</p>
-              <p style="margin: 0 0 8px;"><strong>Branch:</strong> Kiribathgoda</p>
-              <p style="margin: 0;"><strong>Swift/BIC:</strong> PSBKLKLX</p>
-            </div>
-          </div>
+                <!-- Items Table -->
+                <tr>
+                  <td style="padding: 0 20px 30px;">
+                    <p style="margin: 0 0 15px; font-size: 12px; color: #806537; text-transform: uppercase; font-weight: 700; letter-spacing: 0.1em;">Your Items</p>
+                    <table width="100%" cellpadding="0" cellspacing="0" style="border-collapse: collapse;">
+                      <thead>
+                        <tr style="border-bottom: 2px solid #aa8953; background: #fbfaf7;">
+                          <th style="padding: 12px; text-align: left; font-size: 11px; font-weight: 700; color: #171717;">Product</th>
+                          <th style="padding: 12px; text-align: center; font-size: 11px; font-weight: 700; color: #171717;">Qty</th>
+                          <th style="padding: 12px; text-align: right; font-size: 11px; font-weight: 700; color: #171717;">Price</th>
+                          <th style="padding: 12px; text-align: right; font-size: 11px; font-weight: 700; color: #171717;">Total</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        ${itemsTableHtml}
+                      </tbody>
+                    </table>
+                  </td>
+                </tr>
 
-          <!-- Closing -->
-          <div style="text-align: center; padding-top: 20px; border-top: 1px solid rgba(170, 137, 83, 0.15);">
-            <p style="margin: 0; color: #777268; font-size: 12px;">Thank you for choosing Kyro Fragrances.</p>
-            <p style="margin: 8px 0 0; color: #777268; font-size: 11px;">If you have any questions, please contact us.</p>
-          </div>
-        </div>
+                <!-- Total -->
+                <tr>
+                  <td style="padding: 0 20px 30px;">
+                    <table width="100%" cellpadding="0" cellspacing="0" style="background: rgba(170, 137, 83, 0.05); padding: 20px; border-radius: 8px;">
+                      <tr>
+                        <td style="text-align: right;">
+                          <p style="margin: 0; font-size: 13px; color: #777268;">Order Total</p>
+                          <p style="margin: 8px 0 0; font-size: 26px; color: #aa8953; font-weight: 700;">Rs ${order.total.toLocaleString("en-LK")}</p>
+                        </td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+
+                <!-- Delivery Address -->
+                ${
+                  order.delivery_address
+                    ? `
+                <tr>
+                  <td style="padding: 0 20px 30px;">
+                    <p style="margin: 0 0 12px; font-size: 12px; color: #806537; text-transform: uppercase; font-weight: 700; letter-spacing: 0.1em;">Delivery Address</p>
+                    <table width="100%" cellpadding="0" cellspacing="0" style="background: #fbfaf7; border: 1px solid rgba(170, 137, 83, 0.15); border-radius: 8px; padding: 15px;">
+                      <tr>
+                        <td style="font-size: 13px; color: #171717;">
+                          <strong>${order.delivery_address.name}</strong><br>
+                          <span style="color: #777268;">${order.delivery_address.street}</span><br>
+                          <span style="color: #777268;">${order.delivery_address.city}, ${order.delivery_address.postalCode}</span><br>
+                          <span style="color: #777268;">${order.delivery_address.country}</span><br>
+                          <span style="color: #777268; margin-top: 8px; display: block;">Phone: ${order.delivery_address.phone}</span>
+                        </td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+                `
+                    : ""
+                }
+
+                <!-- Bank Details -->
+                <tr>
+                  <td style="padding: 0 20px 30px;">
+                    <p style="margin: 0 0 12px; font-size: 12px; color: #806537; text-transform: uppercase; font-weight: 700; letter-spacing: 0.1em;">Payment Details</p>
+                    <table width="100%" cellpadding="0" cellspacing="0" style="background: #fbfaf7; border: 1px solid rgba(170, 137, 83, 0.15); border-radius: 8px; padding: 15px; font-family: 'Courier New', monospace; font-size: 12px; color: #171717;">
+                      <tr><td><strong>Bank:</strong> People's Bank</td></tr>
+                      <tr><td><strong>Account Name:</strong> Kyro Fragrances</td></tr>
+                      <tr><td><strong>Account Number:</strong> 212-1-002-3-0030826</td></tr>
+                      <tr><td><strong>Branch:</strong> Kiribathgoda</td></tr>
+                      <tr><td><strong>SWIFT Code:</strong> PSBKLKLX</td></tr>
+                    </table>
+                  </td>
+                </tr>
+
+                <!-- Footer -->
+                <tr>
+                  <td style="padding: 30px 20px; text-align: center; border-top: 1px solid rgba(170, 137, 83, 0.15); background: #fbfaf7; color: #777268; font-size: 11px;">
+                    <p style="margin: 0;">Thank you for choosing Kyro Fragrances.</p>
+                    <p style="margin: 8px 0 0;">If you have any questions, please contact us at kyrofragrance@gmail.com</p>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+        </table>
       </body>
       </html>
     `;
 
-    // Admin Email HTML
+    // Admin Email HTML - Optimized for inbox delivery
     const adminEmailHtml = `
       <!DOCTYPE html>
       <html>
       <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>New Order Notification</title>
       </head>
       <body style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; line-height: 1.6; color: #171717; margin: 0; padding: 0; background: #f8f6f0;">
-        <div style="max-width: 600px; margin: 0 auto; padding: 40px 20px;">
-          <!-- Header -->
-          <div style="text-align: center; margin-bottom: 40px; padding-bottom: 20px; border-bottom: 2px solid #aa8953;">
-            <h1 style="margin: 0; font-size: 32px; color: #aa8953; font-weight: 600;">Kyro Admin</h1>
-            <p style="margin: 8px 0 0; color: #777268; font-size: 13px;">New Order Notification</p>
-          </div>
-
-          <!-- Alert -->
-          <div style="background: rgba(170, 137, 83, 0.1); border-left: 4px solid #aa8953; padding: 15px; margin-bottom: 30px; border-radius: 4px;">
-            <p style="margin: 0; font-size: 13px; color: #171717;"><strong>New order received</strong> — Payment verification required</p>
-          </div>
-
-          <!-- Order Summary Card -->
-          <div style="background: #fffefa; border: 1px solid rgba(170, 137, 83, 0.2); border-radius: 12px; padding: 20px; margin-bottom: 30px;">
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 15px;">
-              <div>
-                <p style="margin: 0; font-size: 11px; color: #806537; text-transform: uppercase; font-weight: 700; letter-spacing: 0.1em;">Order ID</p>
-                <p style="margin: 5px 0 0; font-size: 16px; color: #171717; font-weight: 600;">${order.displayOrderId}</p>
-              </div>
-              <div>
-                <p style="margin: 0; font-size: 11px; color: #806537; text-transform: uppercase; font-weight: 700; letter-spacing: 0.1em;">Total</p>
-                <p style="margin: 5px 0 0; font-size: 16px; color: #aa8953; font-weight: 600;">Rs ${order.total.toLocaleString("en-LK")}</p>
-              </div>
-            </div>
-          </div>
-
-          <!-- Customer Info -->
-          <div style="margin-bottom: 30px;">
-            <h3 style="margin: 0 0 12px; font-size: 14px; color: #806537; text-transform: uppercase; font-weight: 700; letter-spacing: 0.1em;">Customer Information</h3>
-            <div style="background: #fbfaf7; border: 1px solid rgba(170, 137, 83, 0.15); border-radius: 8px; padding: 15px;">
-              <p style="margin: 0 0 8px; font-size: 13px; color: #171717;"><strong>${order.delivery_address?.name || "N/A"}</strong></p>
-              <p style="margin: 0 0 6px; font-size: 12px; color: #777268;">Email: ${customerEmail}</p>
-              <p style="margin: 0; font-size: 12px; color: #777268;">Phone: ${order.delivery_address?.phone || "N/A"}</p>
-            </div>
-          </div>
-
-          <!-- Items Table -->
-          <div style="margin-bottom: 30px;">
-            <h3 style="margin: 0 0 15px; font-size: 14px; color: #806537; text-transform: uppercase; font-weight: 700; letter-spacing: 0.1em;">Order Items</h3>
-            <table style="width: 100%; border-collapse: collapse;">
-              <thead>
-                <tr style="border-bottom: 2px solid #aa8953;">
-                  <th style="padding: 12px; text-align: left; font-size: 12px; font-weight: 700; color: #171717;">Product</th>
-                  <th style="padding: 12px; text-align: center; font-size: 12px; font-weight: 700; color: #171717;">Qty</th>
-                  <th style="padding: 12px; text-align: right; font-size: 12px; font-weight: 700; color: #171717;">Price</th>
-                  <th style="padding: 12px; text-align: right; font-size: 12px; font-weight: 700; color: #171717;">Subtotal</th>
+        <table width="100%" cellpadding="0" cellspacing="0" style="background: #f8f6f0;">
+          <tr>
+            <td align="center">
+              <table width="600" cellpadding="0" cellspacing="0" style="max-width: 600px; width: 100%;">
+                <!-- Header -->
+                <tr>
+                  <td style="padding: 40px 20px; text-align: center; border-bottom: 2px solid #aa8953; background: #fffefa;">
+                    <h1 style="margin: 0; font-size: 28px; color: #aa8953; font-weight: 600; font-family: Georgia, serif;">Kyro Admin</h1>
+                    <p style="margin: 8px 0 0; color: #777268; font-size: 12px;">New Order Received</p>
+                  </td>
                 </tr>
-              </thead>
-              <tbody>
-                ${itemsTableHtml}
-              </tbody>
-            </table>
-          </div>
 
-          <!-- Delivery Address -->
-          ${
-            order.delivery_address
-              ? `
-          <div style="margin-bottom: 30px;">
-            <h3 style="margin: 0 0 12px; font-size: 14px; color: #806537; text-transform: uppercase; font-weight: 700; letter-spacing: 0.1em;">Delivery Address</h3>
-            <div style="background: #fbfaf7; border: 1px solid rgba(170, 137, 83, 0.15); border-radius: 8px; padding: 15px; font-size: 12px;">
-              <p style="margin: 0 0 8px;">${order.delivery_address.street}</p>
-              <p style="margin: 0 0 8px;">${order.delivery_address.city}, ${order.delivery_address.postalCode}</p>
-              <p style="margin: 0;">${order.delivery_address.country}</p>
-            </div>
-          </div>
-          `
-              : ""
-          }
+                <!-- Alert -->
+                <tr>
+                  <td style="padding: 20px;">
+                    <table width="100%" cellpadding="0" cellspacing="0" style="background: rgba(170, 137, 83, 0.08); border-left: 4px solid #aa8953; padding: 15px; border-radius: 4px;">
+                      <tr>
+                        <td style="font-size: 13px; color: #171717;">
+                          <strong>New Order Available</strong><br>
+                          <span style="color: #777268; font-size: 12px;">Please review and verify payment</span>
+                        </td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
 
-          <!-- Action Required -->
-          <div style="background: rgba(220, 38, 38, 0.05); border: 1px solid rgba(220, 38, 38, 0.2); border-radius: 8px; padding: 15px; text-align: center;">
-            <p style="margin: 0; font-size: 12px; color: #8b2e2e;"><strong>Action Required:</strong> Verify payment slip and confirm order</p>
-          </div>
-        </div>
+                <!-- Order Summary Card -->
+                <tr>
+                  <td style="padding: 0 20px 30px;">
+                    <table width="100%" cellpadding="0" cellspacing="0" style="background: #fbfaf7; border: 1px solid rgba(170, 137, 83, 0.2); border-radius: 12px; padding: 20px;">
+                      <tr>
+                        <td width="50%" style="padding: 10px 0;">
+                          <p style="margin: 0; font-size: 10px; color: #806537; text-transform: uppercase; font-weight: 700; letter-spacing: 0.1em;">Order Number</p>
+                          <p style="margin: 5px 0 0; font-size: 15px; color: #171717; font-weight: 600;">${order.displayOrderId}</p>
+                        </td>
+                        <td width="50%" style="padding: 10px 0; text-align: right;">
+                          <p style="margin: 0; font-size: 10px; color: #806537; text-transform: uppercase; font-weight: 700; letter-spacing: 0.1em;">Total Amount</p>
+                          <p style="margin: 5px 0 0; font-size: 15px; color: #aa8953; font-weight: 600;">Rs ${order.total.toLocaleString("en-LK")}</p>
+                        </td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+
+                <!-- Customer Info -->
+                <tr>
+                  <td style="padding: 0 20px 30px;">
+                    <p style="margin: 0 0 12px; font-size: 12px; color: #806537; text-transform: uppercase; font-weight: 700; letter-spacing: 0.1em;">Customer Information</p>
+                    <table width="100%" cellpadding="0" cellspacing="0" style="background: #fbfaf7; border: 1px solid rgba(170, 137, 83, 0.15); border-radius: 8px; padding: 15px;">
+                      <tr>
+                        <td style="font-size: 12px; color: #171717;">
+                          <strong>${order.delivery_address?.name || "N/A"}</strong><br>
+                          <span style="color: #777268;">Email: ${customerEmail}</span><br>
+                          <span style="color: #777268;">Phone: ${order.delivery_address?.phone || "N/A"}</span>
+                        </td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+
+                <!-- Items Table -->
+                <tr>
+                  <td style="padding: 0 20px 30px;">
+                    <p style="margin: 0 0 15px; font-size: 12px; color: #806537; text-transform: uppercase; font-weight: 700; letter-spacing: 0.1em;">Order Items</p>
+                    <table width="100%" cellpadding="0" cellspacing="0" style="border-collapse: collapse;">
+                      <thead>
+                        <tr style="border-bottom: 2px solid #aa8953; background: #fbfaf7;">
+                          <th style="padding: 12px; text-align: left; font-size: 11px; font-weight: 700; color: #171717;">Product</th>
+                          <th style="padding: 12px; text-align: center; font-size: 11px; font-weight: 700; color: #171717;">Qty</th>
+                          <th style="padding: 12px; text-align: right; font-size: 11px; font-weight: 700; color: #171717;">Price</th>
+                          <th style="padding: 12px; text-align: right; font-size: 11px; font-weight: 700; color: #171717;">Total</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        ${itemsTableHtml}
+                      </tbody>
+                    </table>
+                  </td>
+                </tr>
+
+                <!-- Delivery Address -->
+                ${
+                  order.delivery_address
+                    ? `
+                <tr>
+                  <td style="padding: 0 20px 30px;">
+                    <p style="margin: 0 0 12px; font-size: 12px; color: #806537; text-transform: uppercase; font-weight: 700; letter-spacing: 0.1em;">Delivery Address</p>
+                    <table width="100%" cellpadding="0" cellspacing="0" style="background: #fbfaf7; border: 1px solid rgba(170, 137, 83, 0.15); border-radius: 8px; padding: 15px; font-size: 12px;">
+                      <tr>
+                        <td style="color: #777268;">
+                          ${order.delivery_address.street}<br>
+                          ${order.delivery_address.city}, ${order.delivery_address.postalCode}<br>
+                          ${order.delivery_address.country}
+                        </td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+                `
+                    : ""
+                }
+
+                <!-- Action Required -->
+                <tr>
+                  <td style="padding: 0 20px 30px;">
+                    <table width="100%" cellpadding="0" cellspacing="0" style="background: rgba(170, 137, 83, 0.1); border: 1px solid rgba(170, 137, 83, 0.2); border-radius: 8px; padding: 15px; text-align: center;">
+                      <tr>
+                        <td style="font-size: 12px; color: #8b2e2e;">
+                          <strong>Action Required:</strong> Verify payment slip and confirm order
+                        </td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+
+                <!-- Footer -->
+                <tr>
+                  <td style="padding: 30px 20px; text-align: center; border-top: 1px solid rgba(170, 137, 83, 0.15); background: #fbfaf7; color: #777268; font-size: 11px;">
+                    <p style="margin: 0;">Kyro Admin Notification</p>
+                    <p style="margin: 8px 0 0;">This is an automated message. Please do not reply to this email.</p>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+        </table>
       </body>
       </html>
     `;
 
     // Send customer email
     await transporter.sendMail({
-      from: GMAIL_USER,
+      from: `Kyro Fragrances <${GMAIL_USER}>`,
       to: customerEmail,
       subject: `Your Kyro Order ${order.displayOrderId} is confirmed`,
       html: customerEmailHtml,
       attachments,
+      headers: {
+        "X-Priority": "3",
+        "X-Mailer": "Kyro-Fragrances",
+        "List-Unsubscribe": `<mailto:${GMAIL_USER}?subject=unsubscribe>`,
+      },
     });
     console.log("[EMAIL POST] ✓ Customer email sent");
 
     // Send admin email
     await transporter.sendMail({
-      from: GMAIL_USER,
+      from: `Kyro Fragrances <${GMAIL_USER}>`,
       to: "kyrofragrance@gmail.com",
       subject: `New Order ${order.displayOrderId} — Payment Verification Required`,
       html: adminEmailHtml,
       attachments,
+      headers: {
+        "X-Priority": "1",
+        "X-Mailer": "Kyro-Fragrances",
+      },
     });
     console.log("[EMAIL POST] ✓ Admin email sent");
 
