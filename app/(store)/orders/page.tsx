@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import toast from "react-hot-toast";
 
 type OrderItem = {
@@ -185,6 +185,213 @@ function ProductImage({
   );
 }
 
+function OrderModal({
+  order,
+  onClose,
+}: {
+  order: Order & { items: OrderItem[] };
+  onClose: () => void;
+}) {
+  const closeButtonRef = useRef<HTMLButtonElement>(null);
+
+  useEffect(() => {
+    if (closeButtonRef.current) {
+      closeButtonRef.current.focus();
+    }
+  }, []);
+
+  const itemCount = order.items.reduce(
+    (sum, item) => sum + Number(item.quantity || 0),
+    0
+  );
+
+  return (
+    <div
+      className="modal-backdrop"
+      role="presentation"
+      onClick={onClose}
+    >
+      <div
+        className="modal-card"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="modal-title"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="modal-header">
+          <div className="modal-header-left">
+            <p className="store-eyebrow">ORDER DETAILS</p>
+            <h2 id="modal-title" className="modal-order-id">
+              Order #{order._id.slice(-7).toUpperCase()}
+            </h2>
+            <div className="modal-meta">
+              <span>{formatDate(order.createdAt)}</span>
+              <span>·</span>
+              <span>{formatTime(order.createdAt)}</span>
+              <span>·</span>
+              <span
+                className={`status-pill ${
+                  normalizeStatus(order.status) === "cancelled"
+                    ? "cancelled"
+                    : ""
+                }`}
+              >
+                <span className="status-dot" />
+                {getStatusLabel(order.status)}
+              </span>
+            </div>
+          </div>
+          <button
+            ref={closeButtonRef}
+            className="modal-close"
+            onClick={onClose}
+            aria-label="Close order details"
+          >
+            ×
+          </button>
+        </div>
+
+        <div className="modal-body">
+          <StatusTimeline status={order.status} />
+
+          {order.shipping && (
+            <div className="modal-section delivery-section">
+              <p className="store-eyebrow">DELIVERY ADDRESS</p>
+              <div className="modal-delivery-grid">
+                <div className="modal-delivery-item">
+                  <div className="modal-delivery-label">Name</div>
+                  <div className="modal-delivery-value">
+                    {order.shipping.name}
+                  </div>
+                </div>
+                <div className="modal-delivery-item">
+                  <div className="modal-delivery-label">Phone</div>
+                  <div className="modal-delivery-value">
+                    {order.shipping.phone}
+                  </div>
+                </div>
+                <div className="modal-delivery-item">
+                  <div className="modal-delivery-label">Email</div>
+                  <div className="modal-delivery-value">
+                    {order.shipping.email}
+                  </div>
+                </div>
+                <div className="modal-delivery-item">
+                  <div className="modal-delivery-label">Address</div>
+                  <div className="modal-delivery-value">
+                    {order.shipping.address}
+                  </div>
+                </div>
+                {order.shipping.city && (
+                  <div className="modal-delivery-item">
+                    <div className="modal-delivery-label">City</div>
+                    <div className="modal-delivery-value">
+                      {order.shipping.city}
+                    </div>
+                  </div>
+                )}
+                {order.shipping.postalCode && (
+                  <div className="modal-delivery-item">
+                    <div className="modal-delivery-label">Postal Code</div>
+                    <div className="modal-delivery-value">
+                      {order.shipping.postalCode}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          <div className="modal-section items-section">
+            <p className="store-eyebrow">ITEMS ({itemCount})</p>
+            <div className="modal-product-list">
+              {order.items.map((item, itemIndex) => {
+                const lineTotal =
+                  Number(item.price || 0) *
+                  Number(item.quantity || 0);
+
+                return (
+                  <div className="modal-product-row" key={itemIndex}>
+                    <div className="modal-product-image">
+                      <ProductImage
+                        src={item.imageUrl}
+                        name={item.name}
+                      />
+                    </div>
+                    <div>
+                      <h3 className="modal-product-name">
+                        {item.name}
+                      </h3>
+                      <div className="modal-product-detail">
+                        {item.size && <div>Size: {item.size}</div>}
+                        {item.quantity && (
+                          <div>Quantity: {item.quantity}</div>
+                        )}
+                        {item.price !== undefined && (
+                          <div>
+                            Price: {formatPrice(item.price)}
+                          </div>
+                        )}
+                      </div>
+                      {item.price !== undefined &&
+                        item.quantity && (
+                          <div className="modal-product-total">
+                            {formatPrice(lineTotal)}
+                          </div>
+                        )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          <div className="modal-section summary-section">
+            <div className="modal-summary-rows">
+              <div className="modal-summary-row">
+                <span>Items</span>
+                <span>{itemCount}</span>
+              </div>
+              <div className="modal-summary-row">
+                <span>Order date</span>
+                <span>{formatDate(order.createdAt)}</span>
+              </div>
+              {order.updatedAt && (
+                <div className="modal-summary-row">
+                  <span>Last updated</span>
+                  <span>{formatDate(order.updatedAt)}</span>
+                </div>
+              )}
+              <div className="modal-summary-row modal-total">
+                <span>Total</span>
+                <span className="modal-total-amount">
+                  {formatPrice(order.total)}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          <div className="modal-section payment-section">
+            <p className="store-eyebrow">PAYMENT METHOD</p>
+            <div style={{ fontSize: "13px", color: "var(--kyro-ink)" }}>
+              <p style={{ margin: "0 0 8px 0" }}>Bank Transfer</p>
+              <p style={{ margin: "0", color: "var(--kyro-muted)" }}>
+                Payment status: {getStatusLabel(order.status)}
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <div className="modal-footer">
+          <button className="modal-close-btn" onClick={onClose}>
+            Close
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function StatusTimeline({ status }: { status: string }) {
   const currentStep = getStatusStep(status);
   const cancelled = normalizeStatus(status) === "cancelled";
@@ -266,6 +473,33 @@ export default function OrdersPage() {
   const [refreshing, setRefreshing] = useState(false);
   const [message, setMessage] = useState("");
   const [expandedOrder, setExpandedOrder] = useState<string | null>(null);
+  const closeButtonRef = useRef<HTMLButtonElement>(null);
+
+  const selectedOrder = useMemo(() => {
+    return orders.find((o) => o._id === expandedOrder) ?? null;
+  }, [expandedOrder, orders]);
+
+  // ESC key closes modal
+  useEffect(() => {
+    if (!expandedOrder) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setExpandedOrder(null);
+    };
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [expandedOrder]);
+
+  // Body scroll lock when modal is open
+  useEffect(() => {
+    if (expandedOrder) {
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "";
+    }
+    return () => {
+      document.body.style.overflow = "";
+    };
+  }, [expandedOrder]);
 
   const loadOrders = useCallback(async (showRefresh = false) => {
     try {
@@ -351,10 +585,8 @@ export default function OrdersPage() {
     }).length;
   }, [orders]);
 
-  function toggleOrder(orderId: string) {
-    setExpandedOrder((current) =>
-      current === orderId ? null : orderId
-    );
+  function openModal(orderId: string) {
+    setExpandedOrder(orderId);
   }
 
   return (
@@ -1414,6 +1646,270 @@ export default function OrdersPage() {
             transition-duration: 0.01ms !important;
           }
         }
+
+        /* Modal */
+        .modal-backdrop {
+          position: fixed;
+          inset: 0;
+          z-index: 9999;
+          background: rgba(0, 0, 0, 0.6);
+          backdrop-filter: blur(4px);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          padding: 20px;
+          animation: fadeIn 0.25s ease both;
+        }
+
+        .modal-card {
+          position: relative;
+          width: 100%;
+          max-width: 700px;
+          max-height: 90vh;
+          overflow-y: auto;
+          border-radius: 28px;
+          background: linear-gradient(135deg, #fffefa 0%, #f8f4eb 100%);
+          border: 1px solid rgba(170, 137, 83, 0.2);
+          box-shadow: 0 40px 100px rgba(23, 23, 23, 0.25), 0 0 0 1px rgba(255,255,255,0.5) inset;
+          animation: modalIn 0.3s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+        }
+
+        .modal-header {
+          display: flex;
+          align-items: flex-start;
+          justify-content: space-between;
+          gap: 20px;
+          padding: 28px 28px 20px;
+          border-bottom: 1px solid rgba(23,23,23,0.08);
+          position: sticky;
+          top: 0;
+          background: linear-gradient(135deg, #fffefa 0%, #f8f4eb 100%);
+          z-index: 10;
+          border-radius: 28px 28px 0 0;
+        }
+
+        .modal-header-left {
+          min-width: 0;
+        }
+
+        .modal-order-id {
+          margin: 4px 0 0;
+          font-family: Georgia, 'Times New Roman', serif;
+          font-size: 26px;
+          font-weight: 400;
+          color: var(--kyro-ink);
+        }
+
+        .modal-meta {
+          display: flex;
+          align-items: center;
+          gap: 10px;
+          flex-wrap: wrap;
+          margin-top: 8px;
+          font-size: 12px;
+          color: var(--kyro-muted);
+        }
+
+        .modal-close {
+          flex-shrink: 0;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          width: 40px;
+          height: 40px;
+          border: 1px solid rgba(23,23,23,0.1);
+          border-radius: 50%;
+          background: rgba(255,254,250,0.8);
+          color: var(--kyro-ink);
+          font-size: 22px;
+          cursor: pointer;
+          transition: background 0.2s ease, transform 0.2s ease;
+          line-height: 1;
+        }
+
+        .modal-close:hover {
+          background: var(--kyro-dark);
+          color: white;
+          transform: scale(1.05);
+        }
+
+        .modal-body {
+          padding: 24px 28px;
+          display: flex;
+          flex-direction: column;
+          gap: 24px;
+        }
+
+        .modal-section {
+          padding: 20px;
+          border: 1px solid rgba(23,23,23,0.07);
+          border-radius: 18px;
+          background: rgba(255,254,250,0.6);
+        }
+
+        .modal-delivery-grid {
+          display: grid;
+          grid-template-columns: 1fr 1fr;
+          gap: 10px 20px;
+          margin-top: 12px;
+        }
+
+        .modal-delivery-item {
+          display: flex;
+          flex-direction: column;
+          gap: 3px;
+        }
+
+        .modal-delivery-label {
+          font-size: 9px;
+          font-weight: 800;
+          letter-spacing: 0.14em;
+          text-transform: uppercase;
+          color: var(--kyro-gold-dark);
+        }
+
+        .modal-delivery-value {
+          font-size: 13px;
+          color: var(--kyro-ink);
+          line-height: 1.5;
+        }
+
+        .modal-product-list {
+          display: flex;
+          flex-direction: column;
+          gap: 12px;
+          margin-top: 14px;
+        }
+
+        .modal-product-row {
+          display: grid;
+          grid-template-columns: 80px 1fr;
+          gap: 16px;
+          padding: 14px;
+          border: 1px solid rgba(23,23,23,0.07);
+          border-radius: 14px;
+          background: rgba(248,246,240,0.7);
+        }
+
+        .modal-product-image {
+          width: 80px;
+          height: 80px;
+          border-radius: 10px;
+          overflow: hidden;
+          background: var(--kyro-paper);
+          flex-shrink: 0;
+        }
+
+        .modal-product-name {
+          margin: 0 0 6px;
+          font-family: Georgia, 'Times New Roman', serif;
+          font-size: 16px;
+          font-weight: 400;
+        }
+
+        .modal-product-detail {
+          color: var(--kyro-muted);
+          font-size: 12px;
+          line-height: 1.6;
+        }
+
+        .modal-product-total {
+          margin-top: 8px;
+          font-size: 15px;
+          font-weight: 700;
+          color: var(--kyro-gold);
+        }
+
+        .modal-summary-rows {
+          display: flex;
+          flex-direction: column;
+          gap: 0;
+        }
+
+        .modal-summary-row {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          padding: 9px 0;
+          color: var(--kyro-muted);
+          font-size: 13px;
+          border-bottom: 1px solid rgba(23,23,23,0.05);
+        }
+
+        .modal-summary-row:last-child {
+          border-bottom: none;
+        }
+
+        .modal-summary-row.modal-total {
+          padding-top: 14px;
+          margin-top: 4px;
+          border-top: 1px solid rgba(23,23,23,0.1);
+          color: var(--kyro-ink);
+          font-size: 15px;
+          font-weight: 700;
+        }
+
+        .modal-total-amount {
+          font-family: Georgia, 'Times New Roman', serif;
+          font-size: 24px;
+          font-weight: 400;
+          color: var(--kyro-gold-dark);
+        }
+
+        .modal-footer {
+          display: flex;
+          align-items: center;
+          justify-content: flex-end;
+          gap: 12px;
+          padding: 18px 28px;
+          border-top: 1px solid rgba(23,23,23,0.08);
+          background: rgba(239,235,225,0.4);
+          border-radius: 0 0 28px 28px;
+        }
+
+        .modal-close-btn {
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          padding: 11px 24px;
+          border: 1px solid rgba(23,23,23,0.15);
+          border-radius: 999px;
+          background: transparent;
+          color: var(--kyro-ink);
+          font-size: 12px;
+          font-weight: 700;
+          cursor: pointer;
+          transition: background 0.2s ease, color 0.2s ease;
+        }
+
+        .modal-close-btn:hover {
+          background: var(--kyro-dark);
+          color: white;
+        }
+
+        @keyframes fadeIn {
+          from { opacity: 0; }
+          to { opacity: 1; }
+        }
+
+        @keyframes modalIn {
+          from { opacity: 0; transform: scale(0.92) translateY(20px); }
+          to { opacity: 1; transform: scale(1) translateY(0); }
+        }
+
+        /* Modal mobile */
+        @media (max-width: 768px) {
+          .modal-backdrop { padding: 10px; align-items: flex-end; }
+          .modal-card { max-width: 100%; max-height: 95vh; border-radius: 24px 24px 0 0; }
+          .modal-header { border-radius: 24px 24px 0 0; padding: 22px 20px 16px; }
+          .modal-body { padding: 18px 20px; }
+          .modal-footer { padding: 14px 20px; border-radius: 0; }
+          .modal-delivery-grid { grid-template-columns: 1fr; }
+          .modal-order-id { font-size: 21px; }
+          .modal-close { min-width: 44px; min-height: 44px; width: 44px; height: 44px; }
+          .modal-product-row { grid-template-columns: 70px 1fr; gap: 12px; padding: 12px; }
+          .modal-product-image { width: 70px; height: 70px; }
+        }
       `}} />
 
       <div className="orders-shell">
@@ -1496,8 +1992,6 @@ export default function OrdersPage() {
                 const normalizedStatus = normalizeStatus(
                   order.status
                 );
-
-                const isExpanded = expandedOrder === order._id;
 
                 const itemCount = order.items.reduce(
                   (sum, item) =>
@@ -1588,338 +2082,24 @@ export default function OrdersPage() {
                         type="button"
                         className="details-button"
                         onClick={() =>
-                          toggleOrder(order._id)
+                          openModal(order._id)
                         }
-                        aria-expanded={isExpanded}
                       >
-                        {isExpanded
-                          ? "Hide details"
-                          : "View details"}
-
-                        <span
-                          className={`arrow ${
-                            isExpanded ? "open" : ""
-                          }`}
-                        >
-                          ↓
-                        </span>
+                        View details
                       </button>
                     </div>
-
-                    {/* =================================================
-                        EXPANDED ORDER DETAILS
-                    ================================================= */}
-                    {isExpanded && (
-                      <div className="order-details">
-                        <div className="details-heading">
-                          <div>
-                            <p className="store-eyebrow">
-                              ORDER DETAILS
-                            </p>
-
-                            <h3>
-                              Your Kyro collection
-                            </h3>
-                          </div>
-
-                          <span>
-                            #{order._id}
-                          </span>
-                        </div>
-
-                        {/* STATUS TIMELINE */}
-                        <StatusTimeline
-                          status={order.status}
-                        />
-
-                        {/* PRODUCTS */}
-                        <div className="products-heading">
-                          <span>Items</span>
-
-                          <span>
-                            {itemCount}{" "}
-                            {itemCount === 1
-                              ? "item"
-                              : "items"}
-                          </span>
-                        </div>
-
-                        <div className="product-list">
-                          {order.items.map(
-                            (item, itemIndex) => {
-                              const lineTotal =
-                                Number(
-                                  item.price || 0
-                                ) *
-                                Number(
-                                  item.quantity || 0
-                                );
-
-                              return (
-                                <div
-                                  className="product-row"
-                                  key={`${order._id}-${itemIndex}`}
-                                >
-                                  <div className="product-image-wrap">
-                                    <ProductImage
-                                      src={
-                                        item.imageUrl
-                                      }
-                                      name={
-                                        item.name
-                                      }
-                                    />
-                                  </div>
-
-                                  <div className="product-info">
-                                    <h4>
-                                      {item.name}
-                                    </h4>
-
-                                    <div className="product-detail-line">
-                                      {item.size && (
-                                        <span>
-                                          Size{" "}
-                                          {item.size}
-                                        </span>
-                                      )}
-
-                                      {item.size &&
-                                        item.quantity && (
-                                          <span className="product-detail-divider">
-                                            •
-                                          </span>
-                                        )}
-
-                                      {item.quantity && (
-                                        <span>
-                                          Qty{" "}
-                                          {
-                                            item.quantity
-                                          }
-                                        </span>
-                                      )}
-
-                                      {(item.size ||
-                                        item.quantity) &&
-                                        item.price !==
-                                          undefined && (
-                                          <span className="product-detail-divider">
-                                            ×
-                                          </span>
-                                        )}
-
-                                      {item.price !==
-                                        undefined && (
-                                        <span>
-                                          {formatPrice(
-                                            item.price
-                                          )}
-                                        </span>
-                                      )}
-
-                                      {item.price !==
-                                        undefined &&
-                                        item.quantity && (
-                                          <>
-                                            <span className="product-detail-divider">
-                                              =
-                                            </span>
-
-                                            <span className="product-line-total">
-                                              {formatPrice(
-                                                lineTotal
-                                              )}
-                                            </span>
-                                          </>
-                                        )}
-                                    </div>
-                                  </div>
-                                </div>
-                              );
-                            }
-                          )}
-                        </div>
-
-                        {/* SUMMARY */}
-                        <div className="summary-grid">
-                          <div className="summary-card">
-                            <p className="store-eyebrow">
-                              YOUR ORDER
-                            </p>
-
-                            <h4>
-                              Thank you for choosing
-                              Kyro.
-                            </h4>
-
-                            <p
-                              style={{
-                                margin: 0,
-                                color:
-                                  "var(--kyro-muted)",
-                                fontSize: 12,
-                                lineHeight: 1.8,
-                              }}
-                            >
-                              Every order is part of
-                              your personal fragrance
-                              journey. Keep this order
-                              reference for future
-                              assistance.
-                            </p>
-
-                            {order.shipping && (
-                              <div
-                                style={{
-                                  marginTop: 18,
-                                  padding: "12px 14px",
-                                  border:
-                                    "1px solid var(--kyro-line)",
-                                  borderRadius: 14,
-                                  background:
-                                    "rgba(239,235,225,0.5)",
-                                }}
-                              >
-                                <p
-                                  style={{
-                                    margin: "0 0 8px",
-                                    fontSize: 9,
-                                    fontWeight: 800,
-                                    letterSpacing:
-                                      "0.16em",
-                                    textTransform:
-                                      "uppercase",
-                                    color:
-                                      "var(--kyro-gold-dark)",
-                                  }}
-                                >
-                                  Delivery address
-                                </p>
-                                <p
-                                  style={{
-                                    margin: 0,
-                                    fontSize: 12,
-                                    lineHeight: 1.9,
-                                    color:
-                                      "var(--kyro-ink)",
-                                  }}
-                                >
-                                  <strong>
-                                    {order.shipping.name}
-                                  </strong>
-                                  <br />
-                                  {order.shipping.address}
-                                  <br />
-                                  {order.shipping.city}
-                                  {order.shipping
-                                    .postalCode
-                                    ? `, ${order.shipping.postalCode}`
-                                    : ""}
-                                  <br />
-                                  <span
-                                    style={{
-                                      color:
-                                        "var(--kyro-muted)",
-                                    }}
-                                  >
-                                    {order.shipping.phone}
-                                  </span>
-                                  <br />
-                                  <span
-                                    style={{
-                                      color:
-                                        "var(--kyro-muted)",
-                                    }}
-                                  >
-                                    {order.shipping.email}
-                                  </span>
-                                </p>
-                              </div>
-                            )}
-
-                            <Link
-                              href="/shop"
-                              className="continue-button"
-                            >
-                              Continue shopping
-                              <span>→</span>
-                            </Link>
-                          </div>
-
-                          <div className="summary-card">
-                            <p className="store-eyebrow">
-                              ORDER SUMMARY
-                            </p>
-
-                            <div className="summary-row">
-                              <span>Order ID</span>
-                              <span
-                                style={{
-                                  fontFamily:
-                                    "monospace",
-                                  fontSize: 10,
-                                  wordBreak:
-                                    "break-all",
-                                }}
-                              >
-                                {order._id}
-                              </span>
-                            </div>
-
-                            <div className="summary-row">
-                              <span>Items</span>
-                              <span>
-                                {itemCount}
-                              </span>
-                            </div>
-
-                            <div className="summary-row">
-                              <span>Order date</span>
-                              <span>
-                                {formatDate(
-                                  order.createdAt
-                                )}
-                              </span>
-                            </div>
-
-                            <div className="summary-row">
-                              <span>Status</span>
-                              <span>
-                                {getStatusLabel(
-                                  order.status
-                                )}
-                              </span>
-                            </div>
-
-                            {order.updatedAt && (
-                              <div className="summary-row">
-                                <span>Last updated</span>
-                                <span>
-                                  {formatDate(
-                                    order.updatedAt
-                                  )}
-                                </span>
-                              </div>
-                            )}
-
-                            <div className="summary-row total">
-                              <span>Total</span>
-
-                              <strong>
-                                {formatPrice(
-                                  order.total
-                                )}
-                              </strong>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    )}
                   </article>
                 );
               })}
             </section>
+
+            {/* MODAL OVERLAY */}
+            {selectedOrder && (
+              <OrderModal
+                order={selectedOrder}
+                onClose={() => setExpandedOrder(null)}
+              />
+            )}
 
             {/* TOTAL SPENT */}
             <div
