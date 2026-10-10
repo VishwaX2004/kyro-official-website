@@ -2296,6 +2296,32 @@ export default function CartPage() {
                 1fr;
             }
 
+            /* Quantity buttons: meet 44px tap target */
+            .quantity-control {
+              height: 44px;
+            }
+
+            .quantity-control button {
+              width: 44px;
+            }
+
+            .quantity-control span {
+              min-width: 32px;
+            }
+
+            /* Remove button: meet 44px tap target */
+            .remove-item-button {
+              width: 44px;
+              height: 44px;
+            }
+
+            /* Clear cart button: meet 44px tap target */
+            .clear-cart-button {
+              min-height: 44px;
+              display: flex;
+              align-items: center;
+            }
+
           }
 
           @media (prefers-reduced-motion: reduce) {

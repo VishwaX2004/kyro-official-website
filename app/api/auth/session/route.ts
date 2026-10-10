@@ -12,5 +12,5 @@ export async function GET() {
     { projection: { passwordHash: 0 } },
   );
   if (!user) return NextResponse.json({ user: null }, { status: 401 });
-  return NextResponse.json({ user: { name: user.name ?? user.username, username: user.username, email: user.email, role: user.role ?? "customer", imageUrl: user.imageUrl ?? "" } });
+  return NextResponse.json({ user: { name: user.name ?? user.username, username: user.username, email: user.email, role: user.role ?? "customer", imageUrl: user.imageUrl || user.picture || "" } });
 }

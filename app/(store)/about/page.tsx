@@ -219,6 +219,16 @@ export default function AboutPage() {
                 opacity: 1 !important;
               }
             }
+
+            @media (max-width: 768px) {
+              .about-hero h1 {
+                font-size: clamp(2.2rem, 9vw, 3.5rem) !important;
+              }
+              .about-two-col {
+                grid-template-columns: 1fr !important;
+                gap: 1.5rem;
+              }
+            }
           `,
         }}
       />

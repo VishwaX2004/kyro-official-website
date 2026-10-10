@@ -47,7 +47,7 @@ export default function ProductCard({
     >
       {/* ── Image — wrapped in Link ────────────────────────── */}
       <Link href={`/product/${product.id}`} className="block">
-        <div className="relative h-[250px] overflow-hidden bg-[radial-gradient(circle_at_50%_45%,#fff_0%,#f4f0e8_55%,#e9e3d7_100%)]">
+        <div className="relative h-[200px] overflow-hidden bg-[radial-gradient(circle_at_50%_45%,#fff_0%,#f4f0e8_55%,#e9e3d7_100%)] sm:h-[250px]">
         {product.featured && (
           <span className="absolute left-3 top-3 z-10 rounded-full border border-black/5 bg-white/90 px-3 py-1.5 text-[8px] font-bold tracking-[.12em] backdrop-blur">
             FEATURED
@@ -127,7 +127,7 @@ export default function ProductCard({
             <button
               type="button"
               disabled
-              className="h-10 w-full cursor-not-allowed rounded-full border border-black/5 bg-[#e7e3da] text-[10px] font-bold text-[#8b867c]"
+              className="h-11 w-full cursor-not-allowed rounded-full border border-black/5 bg-[#e7e3da] text-[10px] font-bold text-[#8b867c]"
             >
               Out of Stock
             </button>

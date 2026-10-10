@@ -1141,6 +1141,20 @@ export default async function ShopPage({
                 transition: none !important;
               }
             }
+
+            /* =====================================================
+               ADDITIONAL MOBILE (768px)
+            ===================================================== */
+
+            @media (max-width: 768px) {
+              .kyro-shop-inner {
+                width: calc(100% - 24px);
+                padding-top: 18px;
+              }
+              .kyro-filter-content {
+                overflow-x: hidden;
+              }
+            }
           `,
         }}
       />

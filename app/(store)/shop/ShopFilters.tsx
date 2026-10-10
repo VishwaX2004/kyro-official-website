@@ -381,6 +381,33 @@ export default function ShopFilters({
 
         /* Pending dimming */
         .sf-pending { opacity: .65; pointer-events: none; transition: opacity .2s; }
+
+        @media (max-width: 768px) {
+          .sf-search {
+            min-height: 44px;
+          }
+          .sf-select {
+            min-height: 44px;
+          }
+          .sf-check {
+            min-height: 44px;
+            padding: 8px 0;
+          }
+          .sf-check input[type="checkbox"] {
+            width: 18px;
+            height: 18px;
+          }
+          .sf-price-row input {
+            min-height: 44px;
+            padding: 10px 8px;
+          }
+          .sf-reset {
+            min-height: 44px;
+          }
+          .sf-chip {
+            font-size: 11px;
+          }
+        }
       `}} />
 
       <div className={`sf-wrap${isPending ? " sf-pending" : ""}`}>

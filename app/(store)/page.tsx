@@ -818,6 +818,43 @@ export default async function HomePage() {
               .kyro-product-wrap:hover {
                 transform: translateY(-3px);
               }
+
+              /* Suppress large decorative circles in hero on mobile */
+              .kyro-hero > div[aria-hidden="true"] {
+                display: none;
+              }
+            }
+
+            @media (max-width: 768px) {
+              /* Hero: reduce font size on small screens */
+              .kyro-hero h1 {
+                font-size: clamp(2.6rem, 10vw, 4rem) !important;
+              }
+              /* Hero CTAs: stack on mobile */
+              .kyro-hero .flex.flex-wrap.items-center.gap-3 {
+                flex-direction: column;
+                align-items: stretch;
+              }
+              .kyro-hero a {
+                justify-content: center;
+                width: 100%;
+              }
+              /* Product grid on home: 2 cols on mobile */
+              .kyro-products-grid {
+                grid-template-columns: repeat(2, 1fr) !important;
+                gap: 1rem !important;
+              }
+              /* Section headings reduce */
+              section h2 {
+                font-size: clamp(1.8rem, 7vw, 2.6rem) !important;
+              }
+            }
+
+            @media (max-width: 480px) {
+              /* Single column product grid on very small screens */
+              .kyro-products-grid {
+                grid-template-columns: 1fr !important;
+              }
             }
 
             /* =====================================================
@@ -1244,7 +1281,7 @@ export default async function HomePage() {
 
           {picks.length > 0 ? (
 
-            <div className="mt-9 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            <div className="kyro-products-grid mt-9 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
 
               {picks.map(
                 (product, index) => (
@@ -1318,7 +1355,7 @@ export default async function HomePage() {
 
               </div>
 
-              <div className="mt-9 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+              <div className="kyro-products-grid mt-9 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
 
                 {more.map(
                   (product, index) => (

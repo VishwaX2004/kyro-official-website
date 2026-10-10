@@ -1371,6 +1371,24 @@ export default function OrdersPage() {
           .chat-copy strong {
             font-size: 10px;
           }
+
+          .details-button {
+            min-height: 44px;
+          }
+
+          .refresh-button {
+            min-height: 44px;
+          }
+        }
+
+        @media (max-width: 768px) {
+          .orders-page {
+            padding-left: 1rem;
+            padding-right: 1rem;
+          }
+          .order-card {
+            padding: 1rem !important;
+          }
         }
 
         @media (prefers-reduced-motion: reduce) {

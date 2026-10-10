@@ -10,7 +10,7 @@ type User = {
   username: string;
   email: string;
   role: string;
-  imageUrl?: string | null;
+  imageUrl?: string | null; // includes Google picture URL when signed in with Google
 };
 
 type ApiResponse = {

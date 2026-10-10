@@ -377,6 +377,32 @@ export default async function ProductPage({
                 animation: none;
               }
             }
+
+            @media (max-width: 768px) {
+              /* Product grid: single column below lg is already handled by Tailwind.
+                 These rules add extra polish for mobile. */
+              .product-detail-grid {
+                grid-template-columns: 1fr !important;
+                gap: 2rem !important;
+              }
+              /* Purchase section action buttons: full width */
+              .product-actions-prominent button {
+                width: 100% !important;
+              }
+              .product-detail-container {
+                padding-left: 1rem;
+                padding-right: 1rem;
+              }
+              /* Prevent long prices overflowing */
+              .product-actions-prominent,
+              .product-actions-prominent [class*="total"],
+              .product-actions-prominent [class*="Total"],
+              .product-actions-prominent [class*="price"],
+              .product-actions-prominent [class*="Price"] {
+                overflow-wrap: break-word;
+                word-break: break-word;
+              }
+            }
           `,
         }}
       />

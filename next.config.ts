@@ -19,6 +19,11 @@ const nextConfig: NextConfig = {
         protocol: "https",
         hostname: "*.unsplash.com",
       },
+      // Google profile pictures (used when signing in with Google)
+      {
+        protocol: "https",
+        hostname: "lh3.googleusercontent.com",
+      },
     ],
   },
 };

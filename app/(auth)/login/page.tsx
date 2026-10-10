@@ -4,6 +4,7 @@ import { FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import toast from "react-hot-toast";
+import { useGoogleLogin } from "@react-oauth/google";
 
 type Mode = "login" | "register";
 
@@ -231,11 +232,46 @@ export default function Home() {
     }
   }
 
-  /* Google sign-in: redirects to your Google OAuth route */
-  function handleGoogle() {
-    setGoogleLoading(true);
-    window.location.href = "/api/auth/google";
-  }
+  /* Google sign-in: opens a popup via @react-oauth/google */
+  const handleGoogle = useGoogleLogin({
+    onSuccess: async (tokenResponse) => {
+      setGoogleLoading(true);
+      const toastId = toast.loading("Signing in with Google...");
+
+      try {
+        const res = await fetch("/api/auth/google/callback", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ accessToken: tokenResponse.access_token }),
+        });
+
+        const data = (await res.json()) as { message?: string; role?: string };
+
+        if (!res.ok) {
+          throw new Error(data.message ?? "Google sign-in failed.");
+        }
+
+        toast.dismiss(toastId);
+        toast.success("Welcome! You're signed in.");
+
+        if (data.role === "admin") {
+          router.push("/admin");
+        } else {
+          router.push("/");
+        }
+      } catch (error) {
+        const msg =
+          error instanceof Error ? error.message : "Google sign-in failed.";
+        toast.dismiss(toastId);
+        toast.error(msg);
+        setGoogleLoading(false);
+      }
+    },
+    onError: () => {
+      toast.error("Google sign-in was cancelled or failed.");
+      setGoogleLoading(false);
+    },
+  });
 
   function switchMode(nextMode: Mode) {
     if (nextMode === mode) return;
@@ -251,7 +287,7 @@ export default function Home() {
     message.includes("Welcome") || message.includes("created");
 
   return (
-    <main className="fixed inset-0 overflow-hidden bg-[#f8f6f0] text-[#171717]">
+    <main className="kyro-login-main fixed inset-0 overflow-hidden bg-[#f8f6f0] text-[#171717]">
       <div className="grid h-full w-full lg:grid-cols-[42%_58%]">
         {/* =====================================================
             LEFT BRAND PANEL
@@ -656,7 +692,7 @@ export default function Home() {
                 {/* Google */}
                 <button
                   type="button"
-                  onClick={handleGoogle}
+                  onClick={() => handleGoogle()}
                   disabled={googleLoading || loading}
                   className="flex h-11 w-full items-center justify-center gap-3 rounded-full border border-black/15 bg-white text-sm font-semibold text-[#171717] shadow-[0_3px_12px_rgba(0,0,0,0.04)] transition-all duration-300 hover:-translate-y-0.5 hover:border-black/30 hover:shadow-[0_10px_25px_rgba(0,0,0,0.09)] active:translate-y-0 disabled:cursor-not-allowed disabled:opacity-60"
                 >
@@ -734,6 +770,29 @@ export default function Home() {
                 animation-iteration-count: 1 !important;
                 transition-duration: 0.01ms !important;
                 scroll-behavior: auto !important;
+              }
+            }
+
+            @media (max-width: 768px) {
+              /* Allow the login page to scroll naturally on short mobile screens */
+              .kyro-login-main {
+                position: relative;
+                overflow-y: auto;
+                height: auto;
+                min-height: 100dvh;
+              }
+              /* Ensure grid is single column */
+              .kyro-auth-grid {
+                grid-template-columns: 1fr;
+              }
+              /* Right panel horizontal padding */
+              .kyro-auth-right {
+                padding-left: 1.25rem;
+                padding-right: 1.25rem;
+              }
+              /* Mode-switch tab buttons: 44px tap target */
+              [role="tablist"] button {
+                min-height: 44px;
               }
             }
           `,

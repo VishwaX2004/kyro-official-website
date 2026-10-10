@@ -2872,6 +2872,517 @@ body{
   .order-steps { font-size: 11px; }
   .order-row-hint { display: none; }
 }
+
+
+/* =========================================================
+   MOBILE RESPONSIVENESS PATCH
+   Desktop styles above remain unchanged.
+========================================================= */
+@media (max-width: 760px) {
+  .kyro-admin,
+  .kyro-admin * {
+    box-sizing: border-box;
+  }
+
+  .kyro-admin {
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    overflow-x: clip;
+  }
+
+  .kyro-admin .admin-content {
+    width: 100%;
+    min-width: 0;
+    max-width: 100%;
+    margin-left: 0;
+    padding: 22px 14px calc(94px + env(safe-area-inset-bottom));
+  }
+
+  .kyro-admin .admin-header {
+    width: 100%;
+    min-width: 0;
+    align-items: flex-start;
+    gap: 14px;
+  }
+
+  .kyro-admin .header-copy {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .kyro-admin .admin-header h1 {
+    max-width: 100%;
+    font-size: clamp(27px, 7vw, 36px);
+    line-height: 1.12;
+    overflow-wrap: anywhere;
+  }
+
+  .kyro-admin .header-subtitle {
+    max-width: 100%;
+    font-size: 14px;
+    line-height: 1.55;
+    overflow-wrap: anywhere;
+  }
+
+  .kyro-admin .admin-header-actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+  }
+
+  .kyro-admin .admin-header-actions .live-pill {
+    max-width: 100%;
+    margin-right: auto;
+  }
+
+  .kyro-admin .admin-notice {
+    align-items: flex-start;
+    gap: 10px;
+    overflow-wrap: anywhere;
+  }
+
+  /* Bottom navigation: all sections remain reachable by touch. */
+  .kyro-admin .admin-sidebar {
+    z-index: 100;
+    top: auto;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    display: flex;
+    width: 100%;
+    min-width: 0;
+    max-width: 100%;
+    height: calc(66px + env(safe-area-inset-bottom));
+    min-height: 66px;
+    flex-direction: row;
+    align-items: stretch;
+    gap: 0;
+    padding: 5px 5px calc(5px + env(safe-area-inset-bottom));
+    overflow-x: auto;
+    overflow-y: hidden;
+    overscroll-behavior-x: contain;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .kyro-admin .sidebar-top,
+  .kyro-admin .admin-user-mini,
+  .kyro-admin .admin-section-label {
+    display: none !important;
+  }
+
+  .kyro-admin .admin-nav,
+  .kyro-admin .admin-sidebar-bottom {
+    display: flex;
+    flex: 1 0 auto;
+    width: auto;
+    min-width: 0;
+    flex-direction: row;
+    align-items: stretch;
+    justify-content: space-around;
+    gap: 2px;
+    margin: 0;
+    padding: 0;
+    border: 0;
+  }
+
+  .kyro-admin .admin-nav button,
+  .kyro-admin .admin-sidebar-bottom button,
+  .kyro-admin .admin-sidebar-bottom a {
+    display: flex;
+    flex: 1 1 0;
+    min-width: 52px;
+    min-height: 54px;
+    height: 100%;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    padding: 5px 3px;
+    border-radius: 10px;
+    font-size: 10px;
+    line-height: 1.1;
+    text-align: center;
+    white-space: normal;
+  }
+
+  .kyro-admin .nav-icon {
+    display: flex;
+    width: 20px;
+    min-width: 20px;
+    height: 20px;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .kyro-admin .nav-icon svg {
+    width: 18px;
+    height: 18px;
+  }
+
+  .kyro-admin .nav-label {
+    max-width: 100%;
+    font-size: 10px;
+    line-height: 1.1;
+    white-space: nowrap;
+  }
+
+  .kyro-admin .collection,
+  .kyro-admin .overview-grid,
+  .kyro-admin .settings-page,
+  .kyro-admin .settings-card,
+  .kyro-admin .welcome-card,
+  .kyro-admin .metric-grid,
+  .kyro-admin .quick-grid {
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  .kyro-admin .metric-grid,
+  .kyro-admin .quick-grid,
+  .kyro-admin .overview-grid,
+  .kyro-admin .settings-page {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .kyro-admin .welcome-card {
+    min-height: 300px;
+    padding: 22px 18px;
+    overflow: hidden;
+  }
+
+  .kyro-admin .welcome-card h2 {
+    max-width: 100%;
+    font-size: clamp(27px, 7vw, 34px);
+    overflow-wrap: anywhere;
+  }
+
+  .kyro-admin .welcome-bottle {
+    right: -10px;
+    bottom: 6px;
+    max-width: 48%;
+    opacity: .45;
+  }
+
+  .kyro-admin .collection-toolbar {
+    display: flex;
+    width: 100%;
+    min-width: 0;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+  }
+
+  .kyro-admin .search-box {
+    width: 100%;
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  .kyro-admin .search-box input {
+    width: 100%;
+    min-width: 0;
+    font-size: 16px;
+  }
+
+  .kyro-admin .collection-toolbar .primary-action,
+  .kyro-admin .settings-actions .primary-action {
+    width: 100%;
+    max-width: 100%;
+    justify-content: center;
+  }
+
+  /* Wide data tables scroll inside their own card, never the page. */
+  .kyro-admin .table-card {
+    width: 100%;
+    min-width: 0;
+    max-width: 100%;
+    overflow: hidden;
+  }
+
+  .kyro-admin .table-scroll {
+    display: block;
+    width: 100%;
+    max-width: 100%;
+    overflow-x: auto;
+    overflow-y: hidden;
+    overscroll-behavior-x: contain;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: thin;
+  }
+
+  .kyro-admin .table-card table {
+    width: max-content;
+    min-width: 680px;
+    max-width: none;
+    table-layout: auto;
+  }
+
+  .kyro-admin .table-card table.products-table {
+    min-width: 820px;
+  }
+
+  .kyro-admin .table-card table.orders-table {
+    min-width: 800px;
+  }
+
+  .kyro-admin .table-card th {
+    padding: 13px 12px;
+    white-space: nowrap;
+  }
+
+  .kyro-admin .table-card td {
+    padding: 13px 12px;
+    vertical-align: middle;
+  }
+
+  .kyro-admin .cell-flex {
+    min-width: 0;
+    gap: 9px;
+  }
+
+  .kyro-admin .cell-flex > div,
+  .kyro-admin .cell-flex > span {
+    min-width: 0;
+    overflow-wrap: anywhere;
+  }
+
+  .kyro-admin .row-actions {
+    gap: 6px;
+  }
+
+  .kyro-admin .row-actions button.table-icon-action {
+    width: 38px;
+    min-width: 38px;
+    height: 38px;
+  }
+
+  .kyro-admin .order-filters {
+    flex-wrap: nowrap;
+    max-width: 100%;
+    padding-bottom: 5px;
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .kyro-admin .order-chip {
+    flex: 0 0 auto;
+    min-height: 38px;
+  }
+
+  .kyro-admin .settings-page {
+    gap: 14px;
+    margin-top: 18px;
+  }
+
+  .kyro-admin .profile-card,
+  .kyro-admin .settings-form {
+    min-width: 0;
+    padding: 20px;
+  }
+
+  .kyro-admin .profile-card {
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: center;
+  }
+
+  .kyro-admin .large-avatar {
+    flex: 0 0 64px;
+    width: 64px;
+    height: 64px;
+    margin: 0 8px 0 0;
+  }
+
+  .kyro-admin .settings-form .form-grid-2,
+  .kyro-admin .form-grid-2,
+  .kyro-admin .notes-grid,
+  .kyro-admin .image-upload-grid,
+  .kyro-admin .image-upload-list,
+  .kyro-admin .decant-options,
+  .kyro-admin .visibility-grid,
+  .kyro-admin .user-profile-grid,
+  .kyro-admin .decant-fields {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .kyro-admin .full-field {
+    grid-column: auto;
+  }
+
+  .kyro-admin .form-section-card,
+  .kyro-admin .user-image-field {
+    min-width: 0;
+    padding: 14px;
+  }
+
+  .kyro-admin .form-field input,
+  .kyro-admin .form-field select,
+  .kyro-admin .form-field textarea,
+  .kyro-admin .simple-form-stack > label input,
+  .kyro-admin .simple-form-stack > label select {
+    width: 100%;
+    min-width: 0;
+    max-width: 100%;
+    font-size: 16px;
+  }
+
+  .kyro-admin .check-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .kyro-admin .image-manager-intro {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .kyro-admin .image-manager-intro > * {
+    max-width: 100%;
+    overflow-wrap: anywhere;
+  }
+
+  .kyro-admin .modal-backdrop {
+    align-items: flex-start;
+    padding: max(8px, env(safe-area-inset-top)) 8px 8px;
+    overflow-y: auto;
+  }
+
+  .kyro-admin .record-modal {
+    width: 100%;
+    max-width: 100%;
+    max-height: calc(100dvh - 16px - env(safe-area-inset-top));
+    min-width: 0;
+    margin: 0 auto;
+    border-radius: 16px;
+  }
+
+  .kyro-admin .record-modal-header-fixed {
+    padding: 18px 16px 14px;
+  }
+
+  .kyro-admin .record-modal-content {
+    min-width: 0;
+    padding: 12px;
+  }
+
+  .kyro-admin .record-modal-footer {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    padding: 12px;
+  }
+
+  .kyro-admin .record-modal-footer > button,
+  .kyro-admin .record-modal-footer .primary-action {
+    flex: 1 1 130px;
+    min-width: 0;
+  }
+
+  .kyro-admin .drawer-head {
+    padding: 18px 16px 14px;
+  }
+
+  .kyro-admin .drawer-title-row {
+    margin-right: 36px;
+  }
+
+  .kyro-admin .drawer-title-row h2 {
+    font-size: 25px;
+    overflow-wrap: anywhere;
+  }
+
+  .kyro-admin .drawer-body {
+    min-width: 0;
+    padding: 14px 12px 18px;
+  }
+
+  .kyro-admin .drawer-card {
+    min-width: 0;
+    padding: 14px;
+  }
+
+  .kyro-admin .drawer-foot {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+    padding: 12px;
+    padding-bottom: calc(12px + env(safe-area-inset-bottom));
+  }
+
+  .kyro-admin .drawer-foot > *,
+  .kyro-admin .drawer-foot .primary-action {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .kyro-admin .drawer-summary div {
+    gap: 8px;
+  }
+
+  .kyro-admin .drawer-summary div > * {
+    min-width: 0;
+    overflow-wrap: anywhere;
+  }
+}
+
+@media (max-width: 460px) {
+  .kyro-admin .admin-content {
+    padding-right: 11px;
+    padding-left: 11px;
+  }
+
+  .kyro-admin .admin-header h1 {
+    font-size: 29px;
+  }
+
+  .kyro-admin .admin-kicker {
+    font-size: 9px;
+    letter-spacing: .12em;
+  }
+
+  .kyro-admin .admin-sidebar {
+    padding-right: 3px;
+    padding-left: 3px;
+  }
+
+  .kyro-admin .admin-nav,
+  .kyro-admin .admin-sidebar-bottom {
+    gap: 1px;
+  }
+
+  .kyro-admin .admin-nav button,
+  .kyro-admin .admin-sidebar-bottom button,
+  .kyro-admin .admin-sidebar-bottom a {
+    min-width: 48px;
+    padding-right: 2px;
+    padding-left: 2px;
+  }
+
+  .kyro-admin .nav-label {
+    font-size: 9px;
+  }
+
+  .kyro-admin .welcome-card {
+    min-height: 280px;
+    padding: 20px 16px;
+  }
+
+  .kyro-admin .welcome-card h2 {
+    font-size: 27px;
+  }
+
+  .kyro-admin .check-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .kyro-admin .profile-card,
+  .kyro-admin .settings-form {
+    padding: 16px;
+  }
+}
           `,
         }}
       />
