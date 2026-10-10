@@ -852,23 +852,31 @@ export default function OrdersPage() {
           gap: 10px;
         }
 
+        /* Desktop product card: image left, details right */
         .product-row {
           display: grid;
-          grid-template-columns: 68px minmax(0, 1fr) auto;
-          align-items: center;
-          gap: 16px;
-          padding: 12px;
-          border: 1px solid rgba(23, 23, 23, 0.07);
-          border-radius: 18px;
-          background: rgba(255, 254, 250, 0.75);
+          grid-template-columns: 120px 1fr;
+          gap: 20px;
+          padding: 20px;
+          border: 1px solid rgba(23, 23, 23, 0.08);
+          border-radius: 20px;
+          background: linear-gradient(135deg, rgba(255, 254, 250, 0.95), rgba(246, 242, 233, 0.85));
+          box-shadow: 0 10px 25px rgba(23, 23, 23, 0.06);
+          transition: transform 0.25s ease, box-shadow 0.25s ease;
+        }
+
+        .product-row:hover {
+          transform: translateY(-3px);
+          box-shadow: 0 18px 40px rgba(23, 23, 23, 0.1);
         }
 
         .product-image-wrap {
-          width: 68px;
-          height: 68px;
+          width: 120px;
+          height: 120px;
           overflow: hidden;
-          border-radius: 14px;
+          border-radius: 16px;
           background: var(--kyro-paper);
+          flex-shrink: 0;
         }
 
         .order-product-image {
@@ -898,17 +906,38 @@ export default function OrdersPage() {
         }
 
         .product-info {
+          display: flex;
+          flex-direction: column;
+          justify-content: space-between;
           min-width: 0;
         }
 
         .product-info h4 {
-          overflow: hidden;
-          margin: 0 0 6px;
+          margin: 0 0 8px;
           font-family: Georgia, "Times New Roman", serif;
-          font-size: 17px;
-          font-weight: 400;
-          text-overflow: ellipsis;
-          white-space: nowrap;
+          font-size: 18px;
+          font-weight: 500;
+          line-height: 1.4;
+          color: var(--kyro-ink);
+          /* NO white-space: nowrap, NO text-overflow: ellipsis */
+        }
+
+        .product-detail-line {
+          margin: 4px 0 0;
+          color: var(--kyro-muted);
+          font-size: 13px;
+          line-height: 1.6;
+        }
+
+        .product-detail-divider {
+          color: var(--kyro-soft);
+        }
+
+        .product-line-total {
+          margin-top: 12px;
+          font-size: 16px;
+          font-weight: 700;
+          color: var(--kyro-gold);
         }
 
         .product-meta {
@@ -921,21 +950,6 @@ export default function OrdersPage() {
 
         .meta-divider {
           color: var(--kyro-soft);
-        }
-
-        .product-price {
-          text-align: right;
-        }
-
-        .product-price strong {
-          display: block;
-          margin-bottom: 4px;
-          font-size: 14px;
-        }
-
-        .product-price span {
-          color: var(--kyro-muted);
-          font-size: 10px;
         }
 
         .summary-grid {
@@ -1344,18 +1358,17 @@ export default function OrdersPage() {
             font-size: 23px;
           }
 
+          /* Mobile: stack image on top */
           .product-row {
-            grid-template-columns: 58px minmax(0, 1fr);
+            grid-template-columns: 1fr;
+            gap: 14px;
+            padding: 16px;
           }
 
           .product-image-wrap {
-            width: 58px;
-            height: 58px;
-          }
-
-          .product-price {
-            grid-column: 2;
-            text-align: left;
+            width: 100%;
+            height: 160px;
+            border-radius: 14px;
           }
 
           .floating-chat {
@@ -1663,60 +1676,64 @@ export default function OrdersPage() {
                                       {item.name}
                                     </h4>
 
-                                    <div className="product-meta">
-                                      <span>
-                                        Qty{" "}
-                                        {
-                                          item.quantity
-                                        }
-                                      </span>
-
+                                    <div className="product-detail-line">
                                       {item.size && (
-                                        <>
-                                          <span className="meta-divider">
+                                        <span>
+                                          Size{" "}
+                                          {item.size}
+                                        </span>
+                                      )}
+
+                                      {item.size &&
+                                        item.quantity && (
+                                          <span className="product-detail-divider">
                                             •
                                           </span>
+                                        )}
 
-                                          <span>
-                                            {
-                                              item.size
-                                            }
-                                          </span>
-                                        </>
+                                      {item.quantity && (
+                                        <span>
+                                          Qty{" "}
+                                          {
+                                            item.quantity
+                                          }
+                                        </span>
                                       )}
+
+                                      {(item.size ||
+                                        item.quantity) &&
+                                        item.price !==
+                                          undefined && (
+                                          <span className="product-detail-divider">
+                                            ×
+                                          </span>
+                                        )}
 
                                       {item.price !==
                                         undefined && (
-                                        <>
-                                          <span className="meta-divider">
-                                            •
-                                          </span>
-
-                                          <span>
-                                            {formatPrice(
-                                              item.price
-                                            )}{" "}
-                                            each
-                                          </span>
-                                        </>
+                                        <span>
+                                          {formatPrice(
+                                            item.price
+                                          )}
+                                        </span>
                                       )}
-                                    </div>
-                                  </div>
 
-                                  <div className="product-price">
-                                    <strong>
                                       {item.price !==
-                                      undefined
-                                        ? formatPrice(
-                                            lineTotal
-                                          )
-                                        : "—"}
-                                    </strong>
+                                        undefined &&
+                                        item.quantity && (
+                                          <>
+                                            <span className="product-detail-divider">
+                                              =
+                                            </span>
 
-                                    <span>
-                                      {item.quantity}{" "}
-                                      × item
-                                    </span>
+                                            <span className="product-line-total">
+                                              {formatPrice(
+                                                lineTotal
+                                              )}
+                                            </span>
+                                          </>
+                                        )}
+                                    </div>
                                   </div>
                                 </div>
                               );
