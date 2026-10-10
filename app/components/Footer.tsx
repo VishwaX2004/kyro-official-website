@@ -5,16 +5,71 @@ import Link from "next/link";
 export default function Footer() {
   return (
     <footer className="relative overflow-hidden border-t border-black/[0.09] bg-white">
+      <style
+        dangerouslySetInnerHTML={{
+          __html: `
+            @media (max-width: 768px) {
+              .footer-grid {
+                grid-template-columns: 1fr !important;
+                gap: 24px !important;
+              }
+
+              .footer-nav {
+                flex-direction: row !important;
+                flex-wrap: wrap;
+                gap: 12px !important;
+              }
+
+              .footer-nav a {
+                flex: 0 1 auto;
+                padding-right: 12px;
+              }
+
+              .footer-bottom {
+                flex-direction: column !important;
+                align-items: flex-start !important;
+              }
+
+              .footer-bottom-links {
+                width: 100%;
+                flex-wrap: wrap;
+              }
+
+              footer .relative.mx-auto {
+                padding: 24px 16px;
+              }
+            }
+
+            @media (max-width: 480px) {
+              footer .relative.mx-auto {
+                padding: 20px 12px;
+              }
+
+              .footer-brand p {
+                font-size: 28px;
+              }
+
+              .footer-nav a {
+                font-size: 9px;
+              }
+
+              footer .text-\\[9px\\] {
+                font-size: 8px;
+              }
+            }
+          `,
+        }}
+      />
       {/* Decorative glow */}
       <div className="pointer-events-none absolute -right-24 -top-24 h-56 w-56 rounded-full bg-[#b08d3c]/[0.06] blur-3xl" />
       <div className="pointer-events-none absolute -bottom-32 -left-24 h-64 w-64 rounded-full bg-[#b08d3c]/[0.04] blur-3xl" />
 
       <div className="relative mx-auto max-w-[1200px] px-5 py-12 sm:px-8 md:py-14 lg:px-10">
         {/* Main footer */}
-        <div className="grid gap-10 md:grid-cols-[1.2fr_1fr_1fr] md:gap-14">
+        <div className="footer-grid grid gap-10 md:grid-cols-[1.2fr_1fr_1fr] md:gap-14">
 
           {/* Brand */}
-          <div className="group">
+          <div className="footer-brand group">
             <Link href="/" className="inline-block">
               <div className="transition-transform duration-500 group-hover:-translate-y-1">
                 <p className="font-serif text-3xl font-semibold tracking-[-0.04em] text-[#111111] sm:text-[34px]">
@@ -48,7 +103,7 @@ export default function Footer() {
               EXPLORE
             </p>
 
-            <nav className="flex flex-col items-start gap-3">
+            <nav className="footer-nav flex flex-col items-start gap-3">
               <Link
                 href="/shop"
                 className="group flex items-center gap-2 text-[10px] font-bold tracking-[0.16em] text-black/70 transition-all duration-300 hover:translate-x-1 hover:text-[#92774d]"
@@ -103,12 +158,12 @@ export default function Footer() {
         <div className="my-10 h-px bg-black/[0.10]" />
 
         {/* Bottom bar */}
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="footer-bottom flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <p className="text-[9px] font-semibold tracking-[0.05em] text-black/50">
             © {new Date().getFullYear()} Kyro Parfums. All rights reserved.
           </p>
 
-          <div className="flex items-center gap-5">
+          <div className="footer-bottom-links flex items-center gap-5">
             <Link
               href="/"
               className="text-[8px] font-bold tracking-[0.18em] text-black/50 transition-colors duration-300 hover:text-[#92774d]"

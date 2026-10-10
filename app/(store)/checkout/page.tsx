@@ -916,6 +916,12 @@ export default function CheckoutPage() {
             gap: 12px !important;
           }
 
+          .form-input {
+            min-height: 44px;
+            font-size: 16px;
+            padding: 12px 14px;
+          }
+
           .button-group {
             flex-direction: column;
             gap: 10px;
@@ -924,21 +930,18 @@ export default function CheckoutPage() {
           .button-group button {
             flex: 1;
             width: 100%;
-          }
-
-          .checkout-heading h1 {
-            font-size: 2rem;
-          }
-
-          .form-input {
             min-height: 44px;
-            font-size: 16px;
           }
 
           .btn-primary,
           .btn-secondary {
             min-height: 44px;
             padding: 12px 16px;
+            font-size: 11px;
+          }
+
+          .checkout-heading h1 {
+            font-size: 2rem;
           }
 
           .bank-details {
@@ -954,6 +957,60 @@ export default function CheckoutPage() {
           .review-item-image {
             width: 60px;
             height: 60px;
+          }
+
+          .form-label {
+            font-size: 10px;
+          }
+
+          .form-field {
+            margin-bottom: 0;
+          }
+        }
+
+        @media (max-width: 480px) {
+          .checkout-form-card {
+            padding: 16px;
+            border-radius: 16px;
+          }
+
+          .checkout-heading h1 {
+            font-size: 1.5rem;
+          }
+
+          .progress-circle {
+            width: 36px;
+            height: 36px;
+            font-size: 12px;
+          }
+
+          .form-input {
+            font-size: 16px;
+            padding: 11px 12px;
+          }
+
+          .btn-primary,
+          .btn-secondary {
+            padding: 11px 14px;
+            font-size: 10px;
+          }
+
+          .upload-dropzone {
+            min-height: 80px;
+            padding: 12px;
+          }
+
+          .bank-details {
+            font-size: 10px;
+            padding: 12px;
+          }
+
+          .checkout-summary {
+            padding: 16px;
+          }
+
+          .summary-title {
+            font-size: 12px;
           }
         }
       `,

@@ -2154,16 +2154,22 @@ export default function CartPage() {
 
             .cart-item-total {
               font-size: 13px;
+              min-height: 44px;
+              display: flex;
+              align-items: center;
+              padding: 8px;
             }
 
             .quantity-control {
               height: 44px !important;
               min-height: 44px;
+              min-width: 100px;
             }
 
             .quantity-control button {
               width: 44px !important;
               height: 44px !important;
+              min-width: 44px;
             }
 
             .quantity-control span {
@@ -2173,11 +2179,14 @@ export default function CartPage() {
             .remove-item-button {
               width: 44px !important;
               height: 44px !important;
+              min-width: 44px;
+              min-height: 44px;
             }
 
             .clear-cart-button {
               min-height: 44px;
               padding: 8px 12px;
+              font-size: 10px;
             }
 
             .cart-summary {
@@ -2208,6 +2217,20 @@ export default function CartPage() {
             .continue-shopping {
               font-size: 11px;
               gap: 6px;
+              min-height: 44px;
+              padding: 8px 12px;
+            }
+
+            .checkout-card input {
+              font-size: 16px;
+              min-height: 44px;
+              padding: 12px 14px;
+            }
+
+            .checkout-submit {
+              height: 44px;
+              min-height: 44px;
+              font-size: 12px;
             }
 
             .empty-commerce {
