@@ -1,637 +1,295 @@
-# Implementation Plan — Kyro Web Full-Stack Fix & Enhancement
+# Implementation Plan: WhatsApp Button Redesign + Mobile Responsiveness Fixes
 
-## Project context
+## Context Summary
 
-- **Stack**: Next.js 16.3.8 (App Router, Turbopack), React 19, TypeScript strict, MongoDB, Supabase Storage
-- **Build command**: `npm run build` (next build)
-- **Type-check**: `npx tsc --noEmit`
-- **Dev server**: `npm run dev`
-- **Shell**: PowerShell — chain commands with `;`, not `&&`
+The codebase is a Next.js fragrance e-commerce site (Kyro Parfums) with TypeScript/React components. The app has existing mobile media queries (reviewed in `mobile-review.md`) that need refinement for edge cases, and the WhatsApp floating button component must be repositioned, restyled, and conditionally displayed across pages.
 
-> `npx tsc --noEmit` exits 0 on the current tree — there are **no compiler-detected TypeScript errors** at this time. The error in the task description (line 3620 `.name` on a union) arises at **runtime/IDE** because the `defaults` object for the three forms is typed as a union of three distinct shapes; the TypeScript compiler accepts the `as Record<string, unknown>` cast already present in the code but the IDE still flags it. The plan addresses every issue found by full manual code-read below.
-
----
-
-## What was found in each file
-
-### `app/admin/page.tsx`
-- **Line ~3620** — `(defaults as Record<string, unknown>).name` already uses a cast, so `tsc` passes. The **real problem** is the `emptyForms` object: it is typed as `typeof emptyForms` (inferred union), so when `collection` is `"orders"` the `defaults` key `name` does not exist. Fix: widen `emptyForms` values to `Record<string, string | string[]>`.
-- The `saveRecord` function builds `payload` for users/orders with `Object.fromEntries(formData.entries())` — for orders this currently sends `items` as a string (not the expected array). This will silently create broken order records.
-- The admin Settings form only saves `profile` in component state — it does **not** call `/api/account/profile`. It needs to call the real API.
-- `notice` is used for both success and error states — a single string cannot differentiate. This is acceptable for now; toasts replace it.
-- Missing `/api/orders` endpoint — `app/(store)/orders/page.tsx` fetches `/api/orders` and `app/(store)/cart/page.tsx` POSTs to `/api/orders`, but **no `app/api/orders/route.ts` file exists**. This is a critical missing endpoint.
-- No `react-hot-toast` — must install and wire `<Toaster />`.
-
-### `app/(store)/shop/page.tsx`
-- Server component; no client-side loading state — product grid renders server-side instantly. The request is for a **skeleton loader**. Next.js 16 uses `loading.tsx` or `Suspense`; since the page is a server component, the correct approach is a `loading.tsx` alongside it.
-- `<img>` used instead of `next/image` — not an error but a lint warning.
-
-### `app/(store)/cart/page.tsx`
-- POSTs to `/api/orders` which does not exist — needs the missing route.
-- No toast notifications on add/remove/place-order.
-
-### `app/(store)/orders/page.tsx`
-- GETs `/api/orders` which does not exist.
-- No toast on fetch errors.
-
-### `app/(store)/account/page.tsx`
-- Uses `notice`/`error` state — these should be replaced or supplemented with toast notifications.
-
-### `app/(store)/contact/ContactForm.tsx`
-- `handleSubmit` is a fake timeout — it does **not** call a real API. Per requirements, we need a contact API or at minimum wire a real `fetch` call. Decision: create `/api/contact/route.ts` that saves to MongoDB `contacts` collection. Also add toast.
-- Uses `styled-jsx` — that package requires `styled-jsx` to be installed or uses Next.js built-in. Next.js 16 still bundles styled-jsx, so this is fine.
-
-### `app/(auth)/login/page.tsx`
-- Uses `setMessage` for success/error — should become toast notifications while keeping the inline form message for field-level context (dual approach).
-
-### `app/components/StoreHeader.tsx`
-- `logout()` silently swallows errors — should toast on failure.
-- No toast on successful logout.
-
-### `app/layout.tsx`
-- Missing `<Toaster />` from `react-hot-toast`.
-
-### `app/api/orders/route.ts`
-- **Does not exist** — must be created with `GET` (list orders for current user) and `POST` (place order).
-
-### `app/api/contact/route.ts`
-- **Does not exist** — must be created with `POST`.
-
-### `lib/auth.ts`, `lib/cart.ts`, `lib/mongodb.ts`, `lib/supabase.ts`
-- No bugs found. All types are sound.
-
-### API routes (existing)
-- All existing admin routes, auth routes, and account routes are correctly implemented.
-- No missing endpoints other than `/api/orders` and `/api/contact`.
+**Key constraints:**
+- Desktop styles must remain untouched
+- Next.js app router (app/(store), app/(auth), app/admin layout groups)
+- Existing WhatsApp button currently placed in app/layout.tsx (root)
+- Mobile breakpoints in use: 768px (main), 640px, 480px, 420px, 375px
+- Touch target minimum: 44px for interactive elements
+- iOS input zoom prevention requires font-size: 16px on inputs
 
 ---
 
-## Implementation Plan
+# Task 1: Redesign WhatsApp Button Component
 
-- [ ] 1. **Install `react-hot-toast`**
+## Decision: Button Placement Strategy
 
-      Add the package at an exact version.
+After reading both `app/layout.tsx` (root) and `app/(store)/layout.tsx`, the cleanest approach is to **render the WhatsApp button in `app/(store)/layout.tsx` with conditional visibility via `usePathname()`**. This avoids duplication and naturally excludes admin pages (outside the store layout group). Since checkout must also be excluded but is within the store group, we'll use a pathname check within the component.
 
-      Files: `package.json` (via npm install)
-
-      ```
-      npm install react-hot-toast@2.4.1
-      ```
-
-      Verify: `npm list react-hot-toast` shows `2.4.1`.
+**Alternative considered (rejected):** Placing in root layout with pathname checks. This would work but requires managing exclusions for multiple layout trees (/admin path still visible unless excluded). The (store) layout is cleaner as it groups all store-visible pages, then we exclude specific routes.
 
 ---
 
-- [ ] 2. **Add `<Toaster />` to the root layout**
+## Plan Items
 
-      Import `Toaster` from `react-hot-toast` and render it inside `<body>` in `app/layout.tsx`.
+### 1. Redesign WhatsAppButton component with new pill-shaped layout
+   **What to do:** Replace circular button (60px) with pill-shaped rectangular button. Add official WhatsApp SVG logo on LEFT side of text ("Chat with Seller"). Remove tooltip and replace with inline text. Update positioning from bottom-LEFT to bottom-RIGHT. Implement responsive sizing and fade-in animation.
 
-      Current `<body>` content:
-      ```tsx
-      <body className="min-h-full flex flex-col font-sans">{children}</body>
-      ```
+   **Changes:**
+   - Width: 150-160px desktop, auto on mobile; height: 52-56px
+   - Position: bottom: 30px, right: 30px (desktop); 20px/20px (tablet @768px); 16px/16px (mobile @480px)
+   - Background: solid #25D366 (WhatsApp green, no gradient)
+   - Button layout: flex row with logo (white SVG 20×20px) LEFT, text "Chat with Seller" RIGHT (12px font, white)
+   - Remove `.whatsapp-button-tooltip` and associated styles
+   - Keep `.whatsapp-button-pulse` but update sizing for rectangular shape
+   - Hover: scale(1.08), enhanced shadow
+   - Animation: fade-in + slide-up on mount
 
-      Replace with:
-      ```tsx
-      import { Toaster } from "react-hot-toast";
-      // ...
-      <body className="min-h-full flex flex-col font-sans">
-        {children}
-        <Toaster
-          position="top-right"
-          toastOptions={{
-            duration: 4000,
-            style: {
-              background: "#fffefa",
-              color: "#171717",
-              border: "1px solid rgba(23,23,23,0.10)",
-              borderRadius: "14px",
-              fontSize: "13px",
-              fontFamily: "inherit",
-              boxShadow: "0 8px 30px rgba(0,0,0,0.10)",
-            },
-            success: {
-              iconTheme: { primary: "#aa8953", secondary: "#fffefa" },
-            },
-            error: {
-              iconTheme: { primary: "#9a3a2c", secondary: "#fffefa" },
-            },
-          }}
-        />
-      </body>
-      ```
+   **Files:** `app/components/WhatsAppButton.tsx`
 
-      Files: `app/layout.tsx`
-
-      Verify: `npx tsc --noEmit` exits 0. Start dev server and confirm no import errors in console.
+   **Verify:** npm run build succeeds with no errors; WhatsAppButton component renders without TypeScript errors.
 
 ---
 
-- [ ] 3. **Fix the TypeScript union type error in `app/admin/page.tsx` (line ~3620)**
+### 2. Update positioning in app/layout.tsx and move to (store)/layout.tsx
+   **What to do:** Remove WhatsAppButton from root app/layout.tsx. Add WhatsAppButton to app/(store)/layout.tsx with conditional rendering via usePathname(). Exclude paths: /checkout, /admin (prevent by checking pathname). Add 'use client' directive since component uses usePathname().
 
-      **Root cause**: `emptyForms` is inferred as a union of three distinct shapes. When `collection === "orders"`, `defaults` lacks a `.name` key but the code indexes `.name` on it (inside the `RecordModal` fallback `<input>`). The cast `as Record<string, unknown>` silences `tsc` but not the IDE.
+   **Files:**
+   - `app/layout.tsx` (remove WhatsAppButton import and JSX)
+   - `app/(store)/layout.tsx` (add 'use client', import WhatsAppButton, conditionally render)
 
-      **Fix**: Widen the `emptyForms` type declaration so all values are `Record<string, string | string[]>`:
+   **Implementation detail:** In (store)/layout.tsx, add after StoreHeader:
+   ```jsx
+   "use client";
+   import { usePathname } from "next/navigation";
+   import WhatsAppButton from "@/app/components/WhatsAppButton";
+   
+   export default function StoreLayout(...) {
+     const pathname = usePathname();
+     const hideWhatsApp = pathname === "/checkout" || pathname.startsWith("/admin");
+     
+     return (
+       <>
+         <ScrollToTop />
+         <StoreHeader />
+         {!hideWhatsApp && <WhatsAppButton />}
+         {children}
+       </>
+     );
+   }
+   ```
 
-      Change from:
-      ```ts
-      const emptyForms = {
-        users: { name: "", email: "", role: "customer" },
-        products: { name: "", brand: "", ... },
-        orders: { customer: "", items: "1", total: "", status: "pending" },
-      };
-      ```
-
-      Change to:
-      ```ts
-      const emptyForms: Record<CollectionResource, Record<string, string | string[]>> = {
-        users: { name: "", email: "", role: "customer" },
-        products: { name: "", brand: "", ... /* all existing keys unchanged */ },
-        orders: { customer: "", items: "1", total: "", status: "pending" },
-      };
-      ```
-
-      This makes `defaults` type `Record<string, string | string[]>` everywhere, so `.name` indexing is safe (returns `string | string[] | undefined`). The existing `String(... ?? value)` calls handle `undefined` gracefully.
-
-      Files: `app/admin/page.tsx` — change the `emptyForms` declaration (around line 150–200).
-
-      Verify: `npx tsc --noEmit` exits 0. Open the admin page; IDE shows no `.name` error on line 3620.
-
----
-
-- [ ] 4. **Create missing `/api/orders/route.ts`**
-
-      Both `app/(store)/cart/page.tsx` (POST) and `app/(store)/orders/page.tsx` (GET) call `/api/orders`. This file **does not exist**.
-
-      Create `app/api/orders/route.ts` with:
-
-      **GET** — return orders for the current authenticated user (or all orders if admin). Shape: `{ orders: Order[] }`.
-      **POST** — place an order. Accept `{ items: CartItem[], shipping: ShippingDetails }`, create an order document in `kyro.orders`, return `{ orderId: string, message: string }`.
-
-      Full file to create:
-      ```ts
-      import { ObjectId } from "mongodb";
-      import { NextResponse } from "next/server";
-      import { clientPromise } from "@/lib/mongodb";
-      import { getSession } from "@/lib/auth";
-
-      export async function GET() {
-        const session = await getSession();
-        if (!session) {
-          return NextResponse.json({ message: "Please sign in to view your orders." }, { status: 401 });
-        }
-        try {
-          const db = (await clientPromise).db("kyro");
-          const query =
-            session.role === "admin"
-              ? {}
-              : { userId: session.userId };
-          const orders = await db
-            .collection("orders")
-            .find(query)
-            .sort({ createdAt: -1 })
-            .toArray();
-          return NextResponse.json({ orders });
-        } catch (error) {
-          console.error("Orders fetch failed:", error);
-          return NextResponse.json({ message: "Unable to load your orders." }, { status: 500 });
-        }
-      }
-
-      export async function POST(request: Request) {
-        const session = await getSession();
-        if (!session) {
-          return NextResponse.json({ message: "Please sign in to place an order." }, { status: 401 });
-        }
-        try {
-          const { items, shipping } = (await request.json()) as {
-            items: { productId: string; name: string; price: number; quantity: number; size?: string }[];
-            shipping: { name: string; email: string; phone: string; address: string; city: string; postalCode: string };
-          };
-          if (!Array.isArray(items) || items.length === 0) {
-            return NextResponse.json({ message: "Your cart is empty." }, { status: 400 });
-          }
-          const total = items.reduce((sum, item) => sum + item.price * item.quantity, 0);
-          const db = (await clientPromise).db("kyro");
-          const result = await db.collection("orders").insertOne({
-            userId: session.userId,
-            items,
-            shipping,
-            total,
-            status: "pending",
-            createdAt: new Date(),
-          });
-          // Decrement stock for each ordered product
-          for (const item of items) {
-            if (ObjectId.isValid(item.productId)) {
-              await db.collection("products").updateOne(
-                { _id: new ObjectId(item.productId), "decants.size": { $exists: true } },
-                { $inc: { "decants.$[].stock": -item.quantity } }
-              );
-            }
-          }
-          return NextResponse.json(
-            { message: "Order placed successfully.", orderId: result.insertedId.toString() },
-            { status: 201 }
-          );
-        } catch (error) {
-          console.error("Order placement failed:", error);
-          return NextResponse.json({ message: "Unable to place your order." }, { status: 500 });
-        }
-      }
-      ```
-
-      Files: `app/api/orders/route.ts` (new file)
-
-      Verify: `npx tsc --noEmit` exits 0. Test GET `/api/orders` with a valid session — should return `{ orders: [] }`. Test POST with a valid cart body — should return `{ orderId: "...", message: "Order placed successfully." }`.
+   **Verify:** npm run build succeeds; navigate to /checkout and confirm button is hidden; navigate to /shop and confirm button is visible.
 
 ---
 
-- [ ] 5. **Create missing `/api/contact/route.ts`**
+### 3. Remove existing "Chat with Seller" button from orders page
+   **What to do:** Search orders page for any existing floating action button or 'Chat with Seller' button near the WhatsApp button and remove it. The new global button will replace this.
 
-      `app/(store)/contact/ContactForm.tsx` currently uses a fake `setTimeout` with no real API call.
+   **Files:** `app/(store)/orders/page.tsx` (remove any existing chat button or overlay button)
 
-      Create `app/api/contact/route.ts`:
-      ```ts
-      import { NextResponse } from "next/server";
-      import { clientPromise } from "@/lib/mongodb";
+   **Search pattern:** Look for references to "Chat with" or "chat" in a floating/action context within the orders modal or page. If found, remove the entire button/div element and associated styles.
 
-      export async function POST(request: Request) {
-        try {
-          const { name, email, subject, message } = (await request.json()) as {
-            name: string;
-            email: string;
-            subject: string;
-            message: string;
-          };
-          if (
-            typeof name !== "string" || name.trim().length < 2 ||
-            typeof email !== "string" || !email.includes("@") ||
-            typeof message !== "string" || message.trim().length < 5
-          ) {
-            return NextResponse.json({ message: "Please fill in all required fields." }, { status: 400 });
-          }
-          const db = (await clientPromise).db("kyro");
-          await db.collection("contacts").insertOne({
-            name: name.trim(),
-            email: email.trim().toLowerCase(),
-            subject: typeof subject === "string" ? subject.trim() : "",
-            message: message.trim(),
-            createdAt: new Date(),
-          });
-          return NextResponse.json({ message: "Message received. We'll get back to you within 24 hours." });
-        } catch (error) {
-          console.error("Contact form submission failed:", error);
-          return NextResponse.json({ message: "Unable to send your message right now. Please try again." }, { status: 500 });
-        }
-      }
-      ```
-
-      Files: `app/api/contact/route.ts` (new file)
-
-      Verify: `npx tsc --noEmit` exits 0. POST to `/api/contact` with valid body returns 200. POST with empty body returns 400.
+   **Verify:** npm run dev opens orders page; no duplicate "Chat with Seller" buttons visible; new WhatsAppButton from (store)/layout.tsx is visible in bottom-right.
 
 ---
 
-- [ ] 6. **Add toast notifications to `app/(auth)/login/page.tsx`**
+---
 
-      Replace the `setMessage` success/error pattern with `toast.success` / `toast.error` calls. Keep the inline message for field-level context (form UX), but also fire a toast.
+# Task 2: Fix Mobile Responsiveness Issues
 
-      Changes in `handleSubmit`:
-      - After `setMessage("Welcome back...")` → also call `toast.success("Welcome back! You're all set.")`.
-      - After `setMessage("Account created...")` → also call `toast.success("Account created. Welcome to Kyro!")`.
-      - In the `catch` block → also call `toast.error(errorMessage)`.
-
-      Import at top:
-      ```ts
-      import toast from "react-hot-toast";
-      ```
-
-      Files: `app/(auth)/login/page.tsx`
-
-      Verify: `npx tsc --noEmit` exits 0. Log in — toast appears top-right; inline message also shows.
+Based on the mobile review findings, the following edge cases and gaps need addressing.
 
 ---
 
-- [ ] 7. **Add toast notifications to `app/components/StoreHeader.tsx`**
+## Plan Items
 
-      In the `logout()` function:
-      - On success (after `router.push("/")`): `toast.success("Signed out. See you next time.")`.
-      - In the `catch` block: `toast.error("Sign-out failed. Please try again.")`.
+### 4. Fix Footer component mobile media queries
+   **What to do:** Add missing mobile media queries to Footer.tsx. Currently has @media (max-width: 768px), @media (max-width: 480px) rules but lacks 375px/320px breakpoints for edge devices. Add rules to suppress decorative glows, reduce font sizes, stack links vertically, and ensure no horizontal scroll at 375px.
 
-      Import at top:
-      ```ts
-      import toast from "react-hot-toast";
-      ```
+   **Changes in `app/components/Footer.tsx`:**
+   - Add @media (max-width: 375px) rule with:
+     - `.pointer-events-none.absolute` (decorative circles): display: none
+     - `footer .mx-auto` (main container): padding: 16px 12px
+     - Footer nav links: font-size: 8px (reduce from 10px)
+     - Footer brand text: font-size: 24px (reduce from 28px)
+   - Ensure footer-bottom links stack in single line with smaller gaps at 375px
+   - Verify all text is legible without horizontal scroll
 
-      Files: `app/components/StoreHeader.tsx`
+   **Files:** `app/components/Footer.tsx`
 
-      Verify: `npx tsc --noEmit` exits 0. Click Sign Out — toast appears.
-
----
-
-- [ ] 8. **Add toast notifications to `app/(store)/shop/AddToCartButton.tsx`**
-
-      The `handleAdd` function calls `saveCart` silently. Add a toast on success and wrap in try/catch for error.
-
-      Changes:
-      ```tsx
-      import toast from "react-hot-toast";
-      // in handleAdd():
-      try {
-        // ... existing cart logic ...
-        saveCart(cart);
-        setAdded(true);
-        setTimeout(() => setAdded(false), 2000);
-        toast.success(`${product.name} added to cart.`);
-      } catch {
-        toast.error("Could not add to cart. Please try again.");
-      }
-      ```
-
-      Files: `app/(store)/shop/AddToCartButton.tsx`
-
-      Verify: `npx tsc --noEmit` exits 0. Click Add to Cart — toast shows product name.
+   **Verify:** npm run build succeeds; visually inspect footer at 375px viewport in DevTools; no horizontal scroll; all links visible.
 
 ---
 
-- [ ] 9. **Add toast notifications to `app/(store)/cart/page.tsx`**
+### 5. Add sub-480px breakpoints and input font-size audit for all form pages
+   **What to do:** Audit all form pages (cart, checkout, contact, account, shop, orders) for form inputs. Ensure all inputs have `font-size: 16px` on mobile (max-width: 480px) to prevent iOS auto-zoom. Add 375px breakpoint where needed for extreme small screens. Check quantity/price controls on cart page for 44px touch targets.
 
-      Add toast for: item quantity update, item removal, order placement success, order placement failure, and fetch errors.
+   **Changes:**
 
-      Changes:
-      - Import `toast from "react-hot-toast"`.
-      - In `update()`: when `quantity === 0` (item removed), call `toast.success("Item removed from cart.")`. On quantity increase/decrease: `toast.success("Cart updated.")` — optional, could use `toast` (neutral) or skip to avoid noise; decision: only toast removals.
-      - In `placeOrder()`:
-        - On success: `toast.success(\`Order confirmed! Order ID: \${data.orderId?.slice(-6).toUpperCase()}\`)`.
-        - On failure: `toast.error(data.message ?? "Unable to place your order.")`.
-        - Wrap the entire fetch in try/catch and `toast.error("Something went wrong.")` in the catch.
+   **a) Cart page** (`app/(store)/cart/page.tsx`):
+   - Add @media (max-width: 480px) rule with:
+     - `.form-input, input, textarea { font-size: 16px; }`
+     - `.quantity-control button { min-width: 44px; min-height: 44px; }` (ensure touch target)
+     - `.cart-item-total { font-size: 13px; }` (reduce from 14px)
+     - `.remove-item-button { width: 36px; height: 36px; }` (increase from 29px for touch)
+   - Add @media (max-width: 375px) with:
+     - `.cart-item { grid-template-columns: 80px 1fr; gap: 12px; }` (reduce image from 100px)
+     - Ensure no horizontal scroll
 
-      Files: `app/(store)/cart/page.tsx`
+   **b) Checkout page** (`app/(store)/checkout/page.tsx`):
+   - Consolidate duplicate @media (max-width: 768px) rules (currently appears twice)
+   - Ensure `.form-input { font-size: 16px; }` is in the 768px rule (already present based on code)
+   - Add @media (max-width: 375px) rule with:
+     - `.checkout-form-card { padding: 16px; }`
+     - `.progress-circle { width: 32px; height: 32px; }`
+     - `.saved-addresses-list { grid-template-columns: 1fr; }` (force single column)
+     - `.review-item-image { width: 50px; height: 50px; }`
 
-      Verify: `npx tsc --noEmit` exits 0. Remove an item — toast fires. Place a valid order — success toast fires.
+   **c) Contact page** (`app/(store)/contact/page.tsx`):
+   - Verify `input, textarea { font-size: 16px; }` is present in @media (max-width: 768px) (already found)
+   - Add @media (max-width: 375px) rule with:
+     - `.grid.gap-5.sm\\:grid-cols-2 { gap: 10px; }`
+     - Form labels: font-size: 9px
 
----
+   **d) Account page** (`app/(store)/account/page.tsx`):
+   - Verify existing @media (max-width: 480px) and @media (max-width: 420px) rules (already present)
+   - Ensure inputs have `font-size: 16px` at 480px breakpoint
+   - Add @media (max-width: 375px) if not already present
 
-- [ ] 10. **Add toast notifications to `app/(store)/orders/page.tsx`**
+   **e) Shop page** (`app/(store)/shop/page.tsx`):
+   - If shop page has form inputs (filter form), ensure `font-size: 16px` at 480px
 
-       The page fetches `/api/orders` on mount. Add toast on error.
+   **f) Orders page** (`app/(store)/orders/page.tsx`):
+   - Check for any form inputs in order details modal; ensure 16px font-size on mobile
 
-       Changes:
-       - Import `toast from "react-hot-toast"`.
-       - In the `.catch()`: `toast.error(error.message ?? "Unable to load orders.")`.
+   **Files:**
+   - `app/(store)/cart/page.tsx`
+   - `app/(store)/checkout/page.tsx`
+   - `app/(store)/contact/page.tsx`
+   - `app/(store)/account/page.tsx`
+   - `app/(store)/shop/page.tsx` (if applicable)
+   - `app/(store)/orders/page.tsx` (if applicable)
 
-       Files: `app/(store)/orders/page.tsx`
-
-       Verify: `npx tsc --noEmit` exits 0. Visit `/orders` while logged out — toast fires with "Please sign in to view your orders."
-
----
-
-- [ ] 11. **Add toast notifications to `app/(store)/account/page.tsx`**
-
-       Both `updateProfile` and `updatePassword` set `notice` and `error` states. Supplement these with toasts (keep the inline alerts for context).
-
-       Changes:
-       - Import `toast from "react-hot-toast"`.
-       - In `updateProfile()`:
-         - After `setNotice(...)`: add `toast.success(data.message ?? "Profile saved.")`.
-         - After `setError(...)` calls: add `toast.error(errorMessage)`.
-         - In the `catch` block: add `toast.error("Something went wrong while saving your profile.")`.
-       - In `updatePassword()`:
-         - Same pattern: `toast.success(...)` on success, `toast.error(...)` on each error path.
-
-       Files: `app/(store)/account/page.tsx`
-
-       Verify: `npx tsc --noEmit` exits 0. Save profile — both inline notice and toast appear.
-
----
-
-- [ ] 12. **Wire the real contact API in `app/(store)/contact/ContactForm.tsx`**
-
-       Replace the fake `setTimeout` with an actual `fetch("/api/contact", ...)` call. Add toast on success and error.
-
-       Replace `handleSubmit`:
-       ```tsx
-       import toast from "react-hot-toast";
-
-       async function handleSubmit(e: FormEvent<HTMLFormElement>) {
-         e.preventDefault();
-         setSending(true);
-         const formData = new FormData(e.currentTarget);
-         const payload = {
-           name: String(formData.get("name") ?? ""),
-           email: String(formData.get("email") ?? ""),
-           subject: String(formData.get("subject") ?? ""),
-           message: String(formData.get("message") ?? ""),
-         };
-         try {
-           const response = await fetch("/api/contact", {
-             method: "POST",
-             headers: { "Content-Type": "application/json" },
-             body: JSON.stringify(payload),
-           });
-           const data = (await response.json()) as { message?: string };
-           if (!response.ok) {
-             toast.error(data.message ?? "Unable to send your message.");
-             return;
-           }
-           toast.success("Message sent! We'll reply within 24 hours.");
-           setSent(true);
-         } catch {
-           toast.error("Something went wrong. Please try again.");
-         } finally {
-           setSending(false);
-         }
-       }
-       ```
-
-       Change the function signature from `function handleSubmit` to `async function handleSubmit` and update the `onSubmit` prop type accordingly (it was already `FormEvent<HTMLFormElement>`, but the handler was synchronous — `onSubmit` on a `<form>` accepts `(e: FormEvent) => void | Promise<void>`, so no type change needed).
-
-       Files: `app/(store)/contact/ContactForm.tsx`
-
-       Verify: `npx tsc --noEmit` exits 0. Submit the contact form — real API call made, toast on success.
+   **Verify:** npm run build succeeds; inspect each form page at 375px, 480px viewports; all inputs show 16px font; quantity controls and buttons are ≥44px; no horizontal scroll.
 
 ---
 
-- [ ] 13. **Add toast notifications to `app/admin/page.tsx` (admin CRUD operations)**
+### 6. Ensure 44px touch targets for cart page quantity and price controls
+   **What to do:** In cart page, quantity control buttons (+ / -) and remove button must meet 44px minimum touch target. Currently quantity control is 31px height; buttons are 32px wide. Increase dimensions or padding to ensure 44px compliance.
 
-       The admin page uses `setNotice(...)` for everything (success and error alike). Replace every `setNotice(...)` call with the appropriate toast, and keep the inline `notice` banner for discoverability.
+   **Changes in `app/(store)/cart/page.tsx`:**
+   - At @media (max-width: 768px), add:
+     - `.quantity-control { height: 44px; min-width: 44px; }`
+     - `.quantity-control button { width: 44px; height: 44px; }`
+     - `.quantity-control span { min-width: 32px; }`
+   - Increase `.remove-item-button` from 29px to 36px at mobile breakpoint
+   - Update text sizes if needed to fit new button dimensions
 
-       Changes — import at the top of the file:
-       ```tsx
-       import toast from "react-hot-toast";
-       ```
+   **Files:** `app/(store)/cart/page.tsx`
 
-       In `saveRecord()`:
-       - On success: `toast.success(editing ? "Fragrance updated." : "Fragrance added to collection.")` — after `setNotice(...)`.
-       - In the `catch`: `toast.error(errorMessage)` — after `setNotice(...)`.
-       - Every early-return validation `setNotice(...)` call: add `toast.error(message)`.
-
-       In `removeRecord()`:
-       - On success: `toast.success("Record removed.")`.
-       - In the `catch`: `toast.error(errorMessage)`.
-
-       In `saveProfile()` (admin settings):
-       - On success: `toast.success("Preferences saved.")`.
-       - **Also wire the real API**: call `PATCH /api/account/profile` with `{ name, email }` before `setProfile(next)`. On API error, `toast.error(...)` and return early.
-
-       In `loadData()`:
-       - In the `catch`: `toast.error(errorMessage)` — after `setNotice(...)`.
-
-       In `loadCounts()`:
-       - In the `catch`: `toast.error("Some dashboard data could not be loaded.")`.
-
-       Files: `app/admin/page.tsx`
-
-       Verify: `npx tsc --noEmit` exits 0. Add a product — success toast fires. Delete a product — success toast fires. Trigger a validation error — error toast fires.
+   **Verify:** npm run build succeeds; inspect cart at 768px and 480px; quantity +/- buttons are visually 44px; remove button is 36px+; no overlap with adjacent elements.
 
 ---
 
-- [ ] 14. **Add a skeleton loader / loading UI to the shop page**
+### 7. Add 375px breakpoint to product detail page
+   **What to do:** Product detail page has only 768px media query. Add 375px rule to reduce image gallery size, adjust pricing/button layout, and suppress decorative elements for extreme small screens.
 
-       The shop page is a server component that fetches products from MongoDB. In Next.js 16 App Router, the correct way to show a loading state is a `loading.tsx` file co-located in the same route segment. Create `app/(store)/shop/loading.tsx`.
+   **Changes in `app/(store)/product/[id]/page.tsx`:**
+   - Add @media (max-width: 375px) rule with:
+     - Product image gallery: reduce thumbnail size from default
+     - `.product-price-card { padding: 12px; }` (reduce from 16px)
+     - `.add-to-cart-button { width: 100%; min-height: 44px; font-size: 12px; }`
+     - Trust icons grid: reduce from 2 columns to single column or increase spacing to avoid crunch
+     - Product name heading: font-size: clamp(1.3rem, 4vw, 1.8rem)
 
-       The skeleton should match the shop page grid layout (4 columns → 2 on tablet → 1 on mobile) with animated pulse placeholders for each product card's image, brand, name, and price.
+   **Files:** `app/(store)/product/[id]/page.tsx`
 
-       Create `app/(store)/shop/loading.tsx`:
-       ```tsx
-       export default function ShopLoading() {
-         const skeletons = Array.from({ length: 8 });
-         return (
-           <>
-             <style dangerouslySetInnerHTML={{ __html: `
-               @keyframes kyroSkeletonPulse {
-                 0%, 100% { opacity: 1; }
-                 50% { opacity: 0.45; }
-               }
-               .kyro-skeleton { animation: kyroSkeletonPulse 1.6s ease-in-out infinite; background: #e8e3d9; border-radius: 10px; }
-               .skeleton-shop { min-height: 100vh; background: #f8f6f0; padding: 0 24px 100px; }
-               .skeleton-shop-inner { width: min(1280px, 100%); margin: 0 auto; }
-               .skeleton-hero { padding: 88px 0 52px; }
-               .skeleton-title { height: 90px; max-width: 500px; margin-bottom: 16px; }
-               .skeleton-subtitle { height: 20px; max-width: 320px; }
-               .skeleton-toolbar { display: flex; justify-content: space-between; align-items: center; margin: 24px 0 36px; gap: 20px; }
-               .skeleton-search { height: 56px; width: min(620px, 100%); border-radius: 999px; }
-               .skeleton-count { height: 20px; width: 80px; }
-               .skeleton-grid { display: grid; grid-template-columns: repeat(4, minmax(0,1fr)); gap: 18px; }
-               .skeleton-card { border-radius: 20px; overflow: hidden; border: 1px solid rgba(23,23,23,0.08); background: rgba(255,254,250,0.78); }
-               .skeleton-img { aspect-ratio: 0.91; }
-               .skeleton-body { padding: 19px; }
-               .skeleton-brand { height: 10px; width: 60px; margin-bottom: 10px; }
-               .skeleton-name { height: 18px; width: 80%; margin-bottom: 8px; }
-               .skeleton-price { height: 18px; width: 50px; margin-bottom: 14px; }
-               .skeleton-notes { height: 42px; margin-bottom: 18px; }
-               .skeleton-btn { height: 46px; border-radius: 999px; }
-               @media (max-width: 1100px) { .skeleton-grid { grid-template-columns: repeat(3, minmax(0,1fr)); } }
-               @media (max-width: 800px) { .skeleton-grid { grid-template-columns: repeat(2, minmax(0,1fr)); } .skeleton-toolbar { flex-direction: column; } .skeleton-search { width: 100%; } }
-               @media (max-width: 520px) { .skeleton-grid { grid-template-columns: 1fr; } }
-             ` }} />
-             <main className="skeleton-shop">
-               <div className="skeleton-shop-inner">
-                 <div className="skeleton-hero">
-                   <div className="kyro-skeleton skeleton-title" />
-                   <div className="kyro-skeleton skeleton-subtitle" />
-                 </div>
-                 <div className="skeleton-toolbar">
-                   <div className="kyro-skeleton skeleton-search" />
-                   <div className="kyro-skeleton skeleton-count" />
-                 </div>
-                 <div className="skeleton-grid">
-                   {skeletons.map((_, i) => (
-                     <div key={i} className="skeleton-card">
-                       <div className="kyro-skeleton skeleton-img" />
-                       <div className="skeleton-body">
-                         <div className="kyro-skeleton skeleton-brand" />
-                         <div className="kyro-skeleton skeleton-name" />
-                         <div className="kyro-skeleton skeleton-price" />
-                         <div className="kyro-skeleton skeleton-notes" />
-                         <div className="kyro-skeleton skeleton-btn" />
-                       </div>
-                     </div>
-                   ))}
-                 </div>
-               </div>
-             </main>
-           </>
-         );
-       }
-       ```
-
-       Files: `app/(store)/shop/loading.tsx` (new file)
-
-       Verify: `npx tsc --noEmit` exits 0. With a slow network (or artificial delay added temporarily to `shop/page.tsx`), the skeleton grid renders before products load.
+   **Verify:** npm run build succeeds; navigate to product at 375px viewport; all elements readable; no horizontal scroll; buttons are ≥44px.
 
 ---
 
-- [ ] 15. **Fix `app/(store)/shop/page.tsx` — use `next/image` instead of `<img>`**
+### 8. Add horizontal scroll audit and overflow prevention at 375px across all store pages
+   **What to do:** Many pages use grid-based layouts with min-width or fixed widths that may overflow at 375px. Add overflow-x: hidden and ensure all major containers use calc(100% - padding) or similar to fit viewport.
 
-       The product image renders as `<img src={product.imageUrl} ... />`. In Next.js 16, `next/image` is preferred for optimization. Replace with `<Image>` and update `next.config.ts` to allow the Supabase domain.
+   **Changes (add to relevant pages):**
+   - At @media (max-width: 375px), add to `main` or page container:
+     - `overflow-x: hidden;`
+   - Review grid layouts: ensure grid-template-columns doesn't create fixed-width columns that exceed viewport
+   - Check for text that may wrap awkwardly; add word-break: break-word if needed
 
-       In `shop/page.tsx`:
-       - Change `<img ... />` to `<Image ... width={400} height={440} />` (or use `fill` with a positioned parent).
-       - Import `Image from "next/image"` at the top.
+   **Files:**
+   - `app/(store)/page.tsx` (home)
+   - `app/(store)/shop/page.tsx`
+   - `app/(store)/cart/page.tsx`
+   - `app/(store)/checkout/page.tsx`
+   - `app/(store)/orders/page.tsx`
+   - `app/(store)/product/[id]/page.tsx`
+   - `app/(store)/contact/page.tsx`
+   - `app/(store)/account/page.tsx`
 
-       In `next.config.ts`:
-       ```ts
-       import type { NextConfig } from "next";
-       const nextConfig: NextConfig = {
-         images: {
-           remotePatterns: [
-             {
-               protocol: "https",
-               hostname: "*.supabase.co",
-               pathname: "/storage/v1/object/public/**",
-             },
-           ],
-         },
-       };
-       export default nextConfig;
-       ```
-
-       Files: `app/(store)/shop/page.tsx`, `next.config.ts`
-
-       Verify: `npx tsc --noEmit` exits 0. Product images render correctly in dev.
+   **Verify:** npm run build succeeds; at 375px viewport, scroll horizontally on each page to confirm no overflow areas; content fits cleanly in viewport width.
 
 ---
 
-- [ ] 16. **Final TypeScript and build verification**
+### 9. Verify and document contact page input sizing
+   **What to do:** Contact page already has @media (max-width: 768px) with `input, textarea { min-height: 44px; font-size: 16px; }`. Verify this rule is present and accurate. If missing, add it. Ensure form layout stacks vertically on mobile.
 
-       Run a full type-check to confirm all changes are clean.
+   **Files:** `app/(store)/contact/page.tsx` (verify existing rule)
 
-       ```
-       npx tsc --noEmit
-       ```
-
-       Expected: exit code 0, no errors.
-
-       Optionally run `npm run build` to confirm no build-time errors. If `next build` surfaces additional issues (e.g., missing environment variables for MongoDB), note them but do not block the plan — they are environment-specific.
-
-       Files: (none — verification only)
-
-       Verify: `npx tsc --noEmit` exits 0.
+   **Verify:** npm run build succeeds; inspect contact form at 768px; inputs are 44px+; font-size is 16px; form fields stack vertically; no layout issues.
 
 ---
 
-## Summary of all files changed or created
+### 10. Audit admin page (out of main scope but note for future)
+   **What to do:** The mobile review flags that admin sidebar is hidden on mobile but no hamburger menu exists. This is **out of scope for this task** (plan noted it as excluded). However, document that when admin page is revisited, the sidebar visibility logic should be paired with a mobile hamburger toggle to restore navigation access.
 
-| Action | File |
-|--------|------|
-| Modified | `package.json` — add `react-hot-toast@2.4.1` |
-| Modified | `app/layout.tsx` — add `<Toaster />` |
-| Modified | `app/admin/page.tsx` — fix `emptyForms` type, add toasts (CRUD, load, settings API call) |
-| Modified | `app/(auth)/login/page.tsx` — add toasts |
-| Modified | `app/components/StoreHeader.tsx` — add toast on logout |
-| Modified | `app/(store)/shop/AddToCartButton.tsx` — add toast |
-| Modified | `app/(store)/cart/page.tsx` — add toasts (remove, place order) |
-| Modified | `app/(store)/orders/page.tsx` — add toast on error |
-| Modified | `app/(store)/account/page.tsx` — add toasts (profile, password) |
-| Modified | `app/(store)/contact/ContactForm.tsx` — wire real API, add toasts |
-| Modified | `app/(store)/shop/page.tsx` — use `next/image` |
-| Modified | `next.config.ts` — add Supabase image domain |
-| Created | `app/api/orders/route.ts` — GET (list orders) + POST (place order) |
-| Created | `app/api/contact/route.ts` — POST (save contact message) |
-| Created | `app/(store)/shop/loading.tsx` — skeleton loader |
+   **Files:** `app/admin/page.tsx` (no changes in this task; documentation only)
 
-## Notes on the original line-3620 error
+   **Note:** Add a comment in the code or task file that states: "Admin sidebar on mobile: currently hidden with no toggle. Future work: add hamburger menu to restore navigation access on mobile."
 
-TypeScript exits 0 today because of the `as Record<string, unknown>` cast already present. However the IDE flags it because `emptyForms[collection]` resolves to the inferred union type and accessing `.name` on the orders shape fails narrowing. **Item 3** adds the explicit type annotation to `emptyForms` which resolves both the tsc and IDE versions of this error without changing runtime behaviour.
+---
+
+---
+
+# Summary of Changes
+
+## Files to Modify
+
+1. **app/components/WhatsAppButton.tsx** — Complete redesign: pill-shaped, right corner, text label, new SVG logo layout
+2. **app/layout.tsx** — Remove WhatsAppButton
+3. **app/(store)/layout.tsx** — Add WhatsAppButton with conditional visibility
+4. **app/(store)/orders/page.tsx** — Remove existing "Chat with Seller" button if present
+5. **app/components/Footer.tsx** — Add 375px breakpoint media query
+6. **app/(store)/cart/page.tsx** — Add 375px/480px breakpoints; ensure 44px touch targets; font-size: 16px on inputs
+7. **app/(store)/checkout/page.tsx** — Consolidate duplicate 768px rules; add 375px breakpoint; ensure font-size: 16px
+8. **app/(store)/contact/page.tsx** — Verify font-size: 16px rule; add 375px breakpoint if needed
+9. **app/(store)/account/page.tsx** — Verify existing breakpoints; add 375px if missing
+10. **app/(store)/product/[id]/page.tsx** — Add 375px breakpoint
+11. **app/(store)/page.tsx** (home) — Add overflow-x: hidden at 375px
+12. **app/(store)/shop/page.tsx** — Add overflow-x: hidden at 375px if needed
+13. **app/admin/page.tsx** — Document future hamburger menu requirement (comment only)
+
+## Build and Test Commands
+
+- **Build:** `npm run build` (must succeed with no errors)
+- **Dev:** `npm run dev` (start local server)
+- **Test:** Manual viewport inspection in DevTools at breakpoints: 375px, 480px, 640px, 768px, 1024px+
+
+## Verification Checklist
+
+- [ ] WhatsAppButton component builds without errors
+- [ ] Button is positioned bottom-right on all breakpoints
+- [ ] Button hidden on /checkout and /admin paths
+- [ ] Button visible on /shop, /cart, /orders, /product/[id], /contact, /account, /about paths
+- [ ] No duplicate "Chat with Seller" buttons on any page
+- [ ] All form inputs have font-size: 16px on mobile (max-width: 480px)
+- [ ] All interactive elements (buttons, quantity controls) are ≥44px touch targets
+- [ ] All pages render at 375px, 480px, 768px without horizontal scroll
+- [ ] Footer renders correctly at 375px
+- [ ] npm run build completes successfully
+- [ ] No TypeScript errors in build output
+
+---
+
+## Notes
+
+- **Desktop styles unchanged:** All changes use `max-width` media queries to preserve desktop layouts.
+- **Responsive font sizing:** Where appropriate, use `clamp()` for smooth font scaling instead of fixed breakpoints.
+- **iOS zoom prevention:** All form inputs must have `font-size: 16px` on mobile to prevent auto-zoom on iOS Safari.
+- **Touch targets:** Minimum 44px is a WCAG 2.1 Level AAA guideline for mobile; maintain this consistently.
+- **WhatsApp button placement:** The button is now part of the (store) layout group, which naturally excludes /admin. The /checkout path is explicitly excluded via pathname check in the component.

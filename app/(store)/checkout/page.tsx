@@ -403,9 +403,109 @@ export default function CheckoutPage() {
           .checkout-layout {
             grid-template-columns: 1fr;
           }
-        }
 
-        /* Form Card */
+          .checkout-layout {
+            grid-template-columns: 1fr !important;
+          }
+
+          .checkout-summary {
+            position: static;
+            top: auto;
+          }
+
+          .checkout-form-card {
+            padding: 20px;
+          }
+
+          .saved-addresses-list {
+            grid-template-columns: 1fr;
+          }
+
+          .review-item {
+            grid-template-columns: 60px 1fr;
+            gap: 12px;
+          }
+
+          .review-item-price {
+            grid-column: 1 / -1;
+            text-align: left;
+            margin-top: 8px;
+          }
+
+          .progress-indicator {
+            flex-direction: column;
+            gap: 12px;
+          }
+
+          .progress-step {
+            gap: 10px;
+          }
+
+          .form-row {
+            grid-template-columns: 1fr !important;
+            gap: 12px !important;
+          }
+
+          .form-input {
+            min-height: 44px;
+            font-size: 16px;
+            padding: 12px 14px;
+          }
+
+          .button-group {
+            flex-direction: column;
+            gap: 10px;
+          }
+
+          .button-group button {
+            flex: 1;
+            width: 100%;
+            min-height: 44px;
+          }
+
+          .btn-primary,
+          .btn-secondary {
+            min-height: 44px;
+            padding: 12px 16px;
+            font-size: 11px;
+          }
+
+          .checkout-heading h1 {
+            font-size: 2rem;
+          }
+
+          .bank-details {
+            font-size: 11px;
+            line-height: 1.6;
+          }
+
+          .upload-dropzone {
+            min-height: 100px;
+            padding: 16px;
+          }
+
+          .review-item-image {
+            width: 60px;
+            height: 60px;
+          }
+
+          .form-label {
+            font-size: 10px;
+          }
+
+          .form-field {
+            margin-bottom: 0;
+          }
+
+          input[type="text"],
+          input[type="number"],
+          input[type="email"],
+          input[type="tel"],
+          textarea {
+            font-size: 16px;
+            min-height: 44px;
+          }
+        }
         .checkout-form-card {
           padding: 32px;
           border: 1px solid var(--kyro-line);
@@ -873,101 +973,6 @@ export default function CheckoutPage() {
           }
         }
 
-        @media (max-width: 768px) {
-          .checkout-layout {
-            grid-template-columns: 1fr !important;
-          }
-
-          .checkout-summary {
-            position: static;
-            top: auto;
-          }
-
-          .checkout-form-card {
-            padding: 20px;
-          }
-
-          .saved-addresses-list {
-            grid-template-columns: 1fr;
-          }
-
-          .review-item {
-            grid-template-columns: 60px 1fr;
-            gap: 12px;
-          }
-
-          .review-item-price {
-            grid-column: 1 / -1;
-            text-align: left;
-            margin-top: 8px;
-          }
-
-          .progress-indicator {
-            flex-direction: column;
-            gap: 12px;
-          }
-
-          .progress-step {
-            gap: 10px;
-          }
-
-          .form-row {
-            grid-template-columns: 1fr !important;
-            gap: 12px !important;
-          }
-
-          .form-input {
-            min-height: 44px;
-            font-size: 16px;
-            padding: 12px 14px;
-          }
-
-          .button-group {
-            flex-direction: column;
-            gap: 10px;
-          }
-
-          .button-group button {
-            flex: 1;
-            width: 100%;
-            min-height: 44px;
-          }
-
-          .btn-primary,
-          .btn-secondary {
-            min-height: 44px;
-            padding: 12px 16px;
-            font-size: 11px;
-          }
-
-          .checkout-heading h1 {
-            font-size: 2rem;
-          }
-
-          .bank-details {
-            font-size: 11px;
-            line-height: 1.6;
-          }
-
-          .upload-dropzone {
-            min-height: 100px;
-            padding: 16px;
-          }
-
-          .review-item-image {
-            width: 60px;
-            height: 60px;
-          }
-
-          .form-label {
-            font-size: 10px;
-          }
-
-          .form-field {
-            margin-bottom: 0;
-          }
-        }
-
         @media (max-width: 480px) {
           .checkout-form-card {
             padding: 16px;
@@ -1011,6 +1016,83 @@ export default function CheckoutPage() {
 
           .summary-title {
             font-size: 12px;
+          }
+
+          input[type="text"],
+          input[type="number"],
+          input[type="email"],
+          input[type="tel"],
+          textarea {
+            font-size: 16px;
+            min-height: 40px;
+          }
+        }
+
+        @media (max-width: 375px) {
+          .checkout-form-card {
+            padding: 14px;
+            border-radius: 14px;
+          }
+
+          .checkout-heading h1 {
+            font-size: 1.3rem;
+          }
+
+          .progress-circle {
+            width: 32px;
+            height: 32px;
+            font-size: 10px;
+          }
+
+          .saved-addresses-list {
+            grid-template-columns: 1fr;
+            gap: 10px;
+          }
+
+          .form-input {
+            font-size: 16px;
+            padding: 10px 11px;
+            min-height: 40px;
+          }
+
+          .btn-primary,
+          .btn-secondary {
+            padding: 10px 12px;
+            font-size: 9px;
+            min-height: 40px;
+          }
+
+          .upload-dropzone {
+            min-height: 70px;
+            padding: 10px;
+          }
+
+          .bank-details {
+            font-size: 9px;
+            padding: 10px;
+          }
+
+          .checkout-summary {
+            padding: 14px;
+          }
+
+          .review-item-image {
+            width: 50px;
+            height: 50px;
+          }
+
+          .review-item {
+            grid-template-columns: 50px 1fr;
+            gap: 10px;
+          }
+
+          input[type="text"],
+          input[type="number"],
+          input[type="email"],
+          input[type="tel"],
+          textarea {
+            font-size: 16px;
+            min-height: 40px;
           }
         }
       `,

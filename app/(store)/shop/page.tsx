@@ -3,6 +3,7 @@ import Footer from "@/app/components/Footer";
 import ProductCard, {
   type ProductCardProduct,
 } from "@/app/components/ProductCard";
+import WhatsAppButton from "@/app/components/WhatsAppButton";
 
 import ShopFilters from "./ShopFilters";
 
@@ -1354,6 +1355,7 @@ export default async function ShopPage({
           </div>
         </div>
       </main>
+      <WhatsAppButton />
       <Footer />
     </>
   );

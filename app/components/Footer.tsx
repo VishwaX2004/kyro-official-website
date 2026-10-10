@@ -57,6 +57,45 @@ export default function Footer() {
                 font-size: 8px;
               }
             }
+
+            @media (max-width: 375px) {
+              .pointer-events-none.absolute {
+                display: none;
+              }
+
+              footer .relative.mx-auto {
+                padding: 16px 12px;
+              }
+
+              .footer-brand p {
+                font-size: 24px;
+              }
+
+              .footer-brand > p {
+                font-size: 8px;
+              }
+
+              .footer-nav {
+                gap: 8px;
+              }
+
+              .footer-nav a {
+                font-size: 8px;
+              }
+
+              .footer-bottom-links {
+                gap: 3px;
+              }
+
+              .footer-bottom-links a,
+              .footer-bottom-links button {
+                font-size: 7px;
+              }
+
+              footer .text-\\[11px\\] {
+                font-size: 9px;
+              }
+            }
           `,
         }}
       />

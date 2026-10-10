@@ -11,6 +11,7 @@ import {
   saveCart,
 } from "@/lib/cart";
 import toast from "react-hot-toast";
+import WhatsAppButton from "@/app/components/WhatsAppButton";
 
 export default function CartPage() {
   const [items, setItems] = useState<CartItem[]>(() =>
@@ -2257,6 +2258,143 @@ export default function CartPage() {
               padding: 0 16px;
               font-size: 11px;
             }
+
+            input[type="text"],
+            input[type="number"],
+            input[type="email"],
+            input[type="tel"],
+            textarea {
+              font-size: 16px;
+            }
+          }
+
+          @media (max-width: 480px) {
+            .kyro-cart-page {
+              padding: 40px 12px 70px;
+              overflow-x: hidden;
+            }
+
+            .cart-heading h1 {
+              font-size: clamp(1.5rem, 4vw, 2.2rem);
+            }
+
+            .cart-item {
+              grid-template-columns: 70px minmax(0, 1fr);
+              gap: 10px;
+              padding: 10px;
+            }
+
+            .cart-item-image {
+              width: 70px;
+              height: 80px;
+            }
+
+            .cart-item-name {
+              font-size: 12px;
+            }
+
+            .cart-item-total {
+              font-size: 12px;
+            }
+
+            .cart-summary {
+              padding: 16px;
+            }
+
+            .summary-total {
+              font-size: 22px;
+            }
+
+            .checkout-button {
+              font-size: 10px;
+            }
+
+            input[type="text"],
+            input[type="number"],
+            input[type="email"],
+            input[type="tel"],
+            textarea {
+              font-size: 16px;
+              min-height: 44px;
+            }
+          }
+
+          @media (max-width: 375px) {
+            .kyro-cart-page {
+              padding: 35px 10px 60px;
+              overflow-x: hidden;
+            }
+
+            .kyro-cart-inner {
+              width: 100%;
+            }
+
+            .cart-heading h1 {
+              font-size: clamp(1.3rem, 3.5vw, 1.8rem);
+            }
+
+            .cart-item {
+              grid-template-columns: 60px minmax(0, 1fr);
+              gap: 8px;
+              padding: 8px;
+            }
+
+            .cart-item-image {
+              width: 60px;
+              height: 70px;
+            }
+
+            .cart-item-name {
+              font-size: 11px;
+              -webkit-line-clamp: 1;
+            }
+
+            .cart-item-total {
+              font-size: 11px;
+              min-height: 40px;
+            }
+
+            .quantity-control {
+              height: 40px !important;
+              min-width: 90px;
+            }
+
+            .quantity-control button {
+              width: 40px !important;
+              height: 40px !important;
+            }
+
+            .remove-item-button {
+              width: 40px !important;
+              height: 40px !important;
+              font-size: 13px;
+            }
+
+            .cart-summary {
+              padding: 14px;
+            }
+
+            .summary-total {
+              font-size: 20px;
+            }
+
+            .summary-label {
+              font-size: 8px;
+            }
+
+            .checkout-button {
+              height: 40px;
+              font-size: 9px;
+            }
+
+            input[type="text"],
+            input[type="number"],
+            input[type="email"],
+            input[type="tel"],
+            textarea {
+              font-size: 16px;
+              min-height: 40px;
+            }
           }
 
           @media (prefers-reduced-motion: reduce) {
@@ -2638,6 +2776,8 @@ export default function CartPage() {
 
         </div>
       </main>
+
+      <WhatsAppButton />
 
       {/* =========================================================
           CHECKOUT MODAL - REMOVED

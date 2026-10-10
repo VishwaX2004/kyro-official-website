@@ -3,6 +3,7 @@
 import { FormEvent, useState } from "react";
 import { Mail, Phone, MessageCircle, Send, CheckCircle, ArrowRight, Sparkles } from "lucide-react";
 import toast from "react-hot-toast";
+import WhatsAppButton from "@/app/components/WhatsAppButton";
 
 type ContactFormData = {
   name: string;
@@ -71,6 +72,7 @@ export default function ContactPage() {
   }
 
   return (
+    <>
     <main className="relative min-h-screen overflow-hidden bg-[#f8f6f0] text-[#171717]">
       <style jsx>{`
         @media (max-width: 768px) {
@@ -121,6 +123,35 @@ export default function ContactPage() {
           
           .flex.flex-col-reverse.gap-3 button {
             width: 100% !important;
+          }
+        }
+
+        @media (max-width: 375px) {
+          h1 {
+            font-size: 1.3rem !important;
+          }
+
+          p {
+            font-size: 14px !important;
+          }
+
+          .grid.gap-5.sm\\:grid-cols-2 {
+            gap: 10px !important;
+          }
+
+          input,
+          textarea {
+            font-size: 16px !important;
+            min-height: 40px !important;
+          }
+
+          button {
+            min-height: 40px !important;
+            font-size: 12px !important;
+          }
+
+          .overflow-hidden.rounded-\\[26px\\] {
+            border-radius: 16px !important;
           }
         }
       `}</style>
@@ -347,5 +378,8 @@ export default function ContactPage() {
         </div>
       </section>
     </main>
+
+    <WhatsAppButton />
+    </>
   );
 }

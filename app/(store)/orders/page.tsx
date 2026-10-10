@@ -1694,6 +1694,15 @@ export default function OrdersPage() {
             width: 60px;
             height: 60px;
           }
+
+          input[type="text"],
+          input[type="number"],
+          input[type="email"],
+          input[type="tel"],
+          textarea {
+            font-size: 16px;
+            min-height: 44px;
+          }
         }
 
         @media (prefers-reduced-motion: reduce) {
@@ -2215,22 +2224,6 @@ export default function OrdersPage() {
           </section>
         )}
       </div>
-
-      {/* ===========================================================
-          FLOATING SELLER CHAT
-      =========================================================== */}
-      <Link
-        href="/contact"
-        className="floating-chat"
-        aria-label="Chat with seller"
-      >
-        <span className="chat-icon">✦</span>
-
-        <span className="chat-copy">
-          <strong>Chat with seller</strong>
-          <span>Need help with your order?</span>
-        </span>
-      </Link>
     </main>
   );
 }

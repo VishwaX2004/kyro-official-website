@@ -5,6 +5,7 @@ import { ObjectId } from "mongodb";
 
 import { clientPromise } from "@/lib/mongodb";
 import Footer from "@/app/components/Footer";
+import WhatsAppButton from "@/app/components/WhatsAppButton";
 import ProductActions from "./ProductActions";
 
 /* =========================================================
