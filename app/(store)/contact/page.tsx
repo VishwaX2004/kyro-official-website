@@ -72,6 +72,58 @@ export default function ContactPage() {
 
   return (
     <main className="relative min-h-screen overflow-hidden bg-[#f8f6f0] text-[#171717]">
+      <style jsx>{`
+        @media (max-width: 768px) {
+          .grid.items-start.gap-8.lg\\:grid-cols-\\[1fr_340px\\] {
+            grid-template-columns: 1fr !important;
+          }
+          
+          .grid.gap-5.sm\\:grid-cols-2 {
+            grid-template-columns: 1fr !important;
+            gap: 12px !important;
+          }
+          
+          section {
+            padding-left: 1rem !important;
+            padding-right: 1rem !important;
+          }
+          
+          input,
+          textarea {
+            min-height: 44px !important;
+            font-size: 16px !important;
+          }
+          
+          button {
+            min-height: 44px !important;
+          }
+          
+          .overflow-hidden.rounded-\\[26px\\] {
+            border-radius: 20px !important;
+          }
+        }
+        
+        @media (max-width: 480px) {
+          h1 {
+            font-size: 1.5rem !important;
+            line-height: 1.3;
+          }
+          
+          textarea {
+            min-height: 120px !important;
+            rows: 4;
+          }
+          
+          .flex.flex-col-reverse.gap-3 {
+            flex-direction: column !important;
+            gap: 10px !important;
+          }
+          
+          .flex.flex-col-reverse.gap-3 button {
+            width: 100% !important;
+          }
+        }
+      `}</style>
       {/* Soft, fixed brand glows */}
       <div className="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden="true">
         <div className="absolute -left-32 top-24 h-72 w-72 rounded-full bg-[#b08d50]/10 blur-3xl" />

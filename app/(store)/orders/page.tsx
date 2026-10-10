@@ -1630,9 +1630,69 @@ export default function OrdersPage() {
           .orders-page {
             padding-left: 1rem;
             padding-right: 1rem;
+            padding-top: 45px;
           }
           .order-card {
             padding: 1rem !important;
+          }
+          .orders-heading {
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 14px;
+          }
+          .orders-heading h1 {
+            font-size: clamp(1.8rem, 5vw, 2.8rem);
+          }
+          .refresh-button {
+            width: 100%;
+          }
+          .stats-grid {
+            grid-template-columns: repeat(2, 1fr) !important;
+            gap: 12px !important;
+          }
+          .order-card-top {
+            grid-template-columns: 1fr !important;
+            gap: 12px !important;
+          }
+          .order-right {
+            flex-direction: row;
+            justify-content: space-between;
+            align-items: center;
+          }
+          .timeline-track {
+            grid-template-columns: 1fr !important;
+            gap: 16px !important;
+          }
+          .timeline-line {
+            display: none !important;
+          }
+          .product-row {
+            grid-template-columns: 1fr !important;
+          }
+          .modal-card {
+            border-radius: 24px 24px 0 0;
+            max-width: 100%;
+          }
+          .modal-header {
+            padding: 20px;
+            border-radius: 24px 24px 0 0;
+          }
+          .modal-body {
+            padding: 16px;
+            gap: 16px;
+          }
+          .modal-delivery-grid {
+            grid-template-columns: 1fr !important;
+            gap: 12px !important;
+          }
+          .modal-product-row {
+            grid-template-columns: 60px 1fr;
+            gap: 12px;
+            padding: 12px;
+          }
+          .modal-product-image {
+            width: 60px;
+            height: 60px;
           }
         }
 

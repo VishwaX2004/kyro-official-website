@@ -383,11 +383,12 @@ export default async function ProductPage({
                  These rules add extra polish for mobile. */
               .product-detail-grid {
                 grid-template-columns: 1fr !important;
-                gap: 2rem !important;
+                gap: 1.5rem !important;
               }
               /* Purchase section action buttons: full width */
               .product-actions-prominent button {
                 width: 100% !important;
+                min-height: 44px !important;
               }
               .product-detail-container {
                 padding-left: 1rem;
@@ -401,6 +402,33 @@ export default async function ProductPage({
               .product-actions-prominent [class*="Price"] {
                 overflow-wrap: break-word;
                 word-break: break-word;
+              }
+              /* Breadcrumb mobile */
+              nav[aria-label="Breadcrumb"] {
+                font-size: 10px;
+              }
+              /* Badges stack on mobile */
+              .absolute.left-4.top-4.flex {
+                flex-direction: column;
+                gap: 6px !important;
+              }
+              /* Price cards: single column on mobile */
+              .grid.grid-cols-2.gap-3 {
+                grid-template-columns: 1fr !important;
+              }
+              /* Trust icons: reduce size on mobile */
+              .mt-5.grid.grid-cols-3.gap-3 {
+                grid-template-columns: repeat(2, 1fr) !important;
+              }
+              /* Form inputs: accessible touch targets */
+              .product-actions-prominent input,
+              .product-actions-prominent select {
+                min-height: 44px !important;
+                padding: 10px 12px !important;
+              }
+              /* Heading: responsive font sizing */
+              h1 {
+                font-size: clamp(1.8rem, 5vw, 3rem) !important;
               }
             }
           `,

@@ -874,8 +874,17 @@ export default function CheckoutPage() {
         }
 
         @media (max-width: 768px) {
+          .checkout-layout {
+            grid-template-columns: 1fr !important;
+          }
+
+          .checkout-summary {
+            position: static;
+            top: auto;
+          }
+
           .checkout-form-card {
-            padding: 24px;
+            padding: 20px;
           }
 
           .saved-addresses-list {
@@ -884,12 +893,67 @@ export default function CheckoutPage() {
 
           .review-item {
             grid-template-columns: 60px 1fr;
+            gap: 12px;
           }
 
           .review-item-price {
             grid-column: 1 / -1;
             text-align: left;
             margin-top: 8px;
+          }
+
+          .progress-indicator {
+            flex-direction: column;
+            gap: 12px;
+          }
+
+          .progress-step {
+            gap: 10px;
+          }
+
+          .form-row {
+            grid-template-columns: 1fr !important;
+            gap: 12px !important;
+          }
+
+          .button-group {
+            flex-direction: column;
+            gap: 10px;
+          }
+
+          .button-group button {
+            flex: 1;
+            width: 100%;
+          }
+
+          .checkout-heading h1 {
+            font-size: 2rem;
+          }
+
+          .form-input {
+            min-height: 44px;
+            font-size: 16px;
+          }
+
+          .btn-primary,
+          .btn-secondary {
+            min-height: 44px;
+            padding: 12px 16px;
+          }
+
+          .bank-details {
+            font-size: 11px;
+            line-height: 1.6;
+          }
+
+          .upload-dropzone {
+            min-height: 100px;
+            padding: 16px;
+          }
+
+          .review-item-image {
+            width: 60px;
+            height: 60px;
           }
         }
       `,
