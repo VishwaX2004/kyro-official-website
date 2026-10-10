@@ -1,0 +1,36 @@
+TypeScript Type Check (npx tsc --noEmit)
+==========================================
+Exit Code: 0
+No errors found.
+
+Next.js Build (npm run build)
+=============================
+Exit Code: 0
+Build completed successfully.
+
+Files Modified:
+- lib/rate-limit.ts (CREATE)
+- app/api/orders/route.ts (MODIFY POST handler)
+- app/(store)/checkout/page.tsx (MODIFY placeOrder function)
+
+Implementation Details:
+1. Created rate limiter utility with sliding window algorithm (3 orders/min per user)
+2. Refactored POST /api/orders handler:
+   - Added comprehensive input validation
+   - Added rate limiting check (returns 429 if exceeded)
+   - Removed blocking email send (moved to background with after())
+   - Removed blocking stock decrement loop (moved to background with after())
+   - Removed admin ping test and post-insert verification
+   - Removed verbose console.log statements (kept only essential errors)
+   - Returns 201 immediately after insert
+   - Background tasks (emails and stock updates) execute after response is sent
+3. Optimized checkout page placeOrder function:
+   - Clears cart optimistically BEFORE fetch (improves UX)
+   - Shows "Placing your order..." while request is in flight
+   - Restores cart on error
+   - Uses loading toast for better UX
+
+Expected Performance Improvement:
+- POST /api/orders response time: 5-10s → <500ms (client-perceived)
+- Email and stock updates happen in background (10-15s, non-blocking)
+- Cart clears instantly (optimistic UI)

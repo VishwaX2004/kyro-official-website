@@ -220,14 +220,22 @@ export default function CheckoutPage() {
       return;
     }
 
+    // Snapshot cart items before clearing
+    const cartSnapshot = [...cartItems];
+
+    // Optimistic UI: clear cart immediately before fetch
+    saveCart([]);
+    setCartItems([]);
     setSubmitting(true);
+    const submittingToastId = toast.loading("Placing your order...");
+
     try {
       const response = await fetch("/api/orders", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
         body: JSON.stringify({
-          items: cartItems,
+          items: cartSnapshot,
           delivery_address: deliveryForm,
           payment_slip_url: receiptUrl,
           payment_slip_filename: receiptFilename,
@@ -243,14 +251,21 @@ export default function CheckoutPage() {
         throw new Error(data.message || "Failed to place order");
       }
 
-      saveCart([]);
+      // Dismiss loading toast and show success
+      toast.dismiss(submittingToastId);
       toast.success(`Order ${data.orderId} placed successfully!`);
 
+      // Navigate after short delay
       setTimeout(() => {
         router.push("/orders");
-      }, 2000);
+      }, 1500);
     } catch (err) {
-      console.error("Order error:", err);
+      // Restore cart on error
+      saveCart(cartSnapshot);
+      setCartItems(cartSnapshot);
+
+      // Dismiss loading toast and show error
+      toast.dismiss(submittingToastId);
       toast.error(
         err instanceof Error ? err.message : "Failed to place order"
       );

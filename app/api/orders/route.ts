@@ -1,7 +1,8 @@
 import { ObjectId } from "mongodb";
-import { NextResponse } from "next/server";
+import { NextResponse, after } from "next/server";
 import { clientPromise } from "@/lib/mongodb";
 import { getSession } from "@/lib/auth";
+import { checkRateLimit } from "@/lib/rate-limit";
 
 export async function GET() {
   const session = await getSession();
@@ -63,13 +64,9 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
-  console.log("[ORDER POST] ========== ORDER POST START ==========");
-  
   const session = await getSession();
-  console.log("[ORDER POST] Session object:", JSON.stringify(session, null, 2));
-  
+
   if (!session) {
-    console.error("[ORDER POST] NO SESSION - returning 401");
     return NextResponse.json(
       { message: "Please sign in to place an order." },
       { status: 401 }
@@ -77,10 +74,7 @@ export async function POST(request: Request) {
   }
 
   try {
-    console.log("[ORDER POST] Session userId:", session.userId);
-    console.log("[ORDER POST] Session username:", session.username);
-    console.log("[ORDER POST] Session role:", session.role);
-
+    // Parse request body
     const body = (await request.json()) as {
       items: {
         productId: string;
@@ -112,42 +106,78 @@ export async function POST(request: Request) {
     };
 
     const { items, shipping, delivery_address, payment_slip_url, payment_slip_filename } = body;
-    console.log("[ORDER POST] Items count:", items?.length);
-    console.log("[ORDER POST] First item:", items?.[0]);
-    console.log("[ORDER POST] Shipping name:", shipping?.name);
-    console.log("[ORDER POST] Delivery address:", delivery_address?.name);
 
-    if (!Array.isArray(items) || items.length === 0) {
-      console.warn("[ORDER POST] Empty items array - returning 400");
+    // Validate items array
+    if (!Array.isArray(items) || items.length === 0 || items.length > 20) {
       return NextResponse.json(
-        { message: "Your cart is empty." },
+        { message: "Cart must contain 1-20 items." },
         { status: 400 }
       );
     }
 
-    const total = items.reduce(
-      (sum, item) => sum + item.price * item.quantity,
-      0
-    );
-    console.log("[ORDER POST] Total calculated:", total);
+    // Validate each item
+    for (const item of items) {
+      if (
+        typeof item.productId !== "string" ||
+        typeof item.name !== "string" ||
+        typeof item.price !== "number" ||
+        typeof item.quantity !== "number"
+      ) {
+        return NextResponse.json(
+          { message: "Invalid item format." },
+          { status: 400 }
+        );
+      }
 
-    let client;
-    try {
-      console.log("[ORDER POST] Connecting to MongoDB...");
-      client = await clientPromise;
-      console.log("[ORDER POST] ✓ MongoDB client promise resolved");
-      
-      const adminDb = client.db("admin");
-      console.log("[ORDER POST] Testing connection with admin.ping...");
-      const pingResult = await adminDb.command({ ping: 1 });
-      console.log("[ORDER POST] ✓ Ping successful:", pingResult);
-    } catch (connError) {
-      console.error("[ORDER POST] ✗ MongoDB connection error:", connError);
-      throw connError;
+      if (item.price <= 0) {
+        return NextResponse.json(
+          { message: "Item prices must be greater than 0." },
+          { status: 400 }
+        );
+      }
+
+      if (!Number.isInteger(item.quantity) || item.quantity < 1) {
+        return NextResponse.json(
+          { message: "Item quantities must be positive integers." },
+          { status: 400 }
+        );
+      }
     }
 
+    // Validate delivery address fields
+    if (delivery_address) {
+      const requiredFields = [
+        "name",
+        "email",
+        "phone",
+        "street",
+        "city",
+        "postalCode",
+        "country",
+      ];
+      for (const field of requiredFields) {
+        const value = delivery_address[field as keyof typeof delivery_address];
+        if (!value || typeof value !== "string" || value.trim().length === 0) {
+          return NextResponse.json(
+            { message: `Delivery address field '${field}' is required.` },
+            { status: 400 }
+          );
+        }
+      }
+    }
+
+    // Rate limiting: 3 orders per minute per user
+    const rateLimitResult = checkRateLimit(session.userId, 3, 60000);
+    if (!rateLimitResult.allowed) {
+      return NextResponse.json(
+        { message: "Too many orders placed. Please try again later." },
+        { status: 429 }
+      );
+    }
+
+    // Connect to MongoDB
+    const client = await clientPromise;
     const db = client.db("kyro");
-    console.log("[ORDER POST] ✓ Selected database 'kyro'");
 
     // Generate order ID in format MM-DD-ID001
     const now = new Date();
@@ -172,7 +202,9 @@ export async function POST(request: Request) {
 
     const sequenceNum = String(todayOrderCount + 1).padStart(3, "0");
     const displayOrderId = `${datePrefix}-ID${sequenceNum}`;
-    console.log(`[ORDER POST] Generated order ID: ${displayOrderId}`);
+
+    // Prepare order data
+    const total = items.reduce((sum, item) => sum + item.price * item.quantity, 0);
 
     const orderData = {
       userId: session.userId,
@@ -188,102 +220,88 @@ export async function POST(request: Request) {
       createdAt: new Date(),
       updatedAt: new Date(),
     };
-    console.log("[ORDER POST] Order data prepared:", JSON.stringify(orderData, null, 2));
 
-    let result;
-    try {
-      console.log("[ORDER POST] Calling insertOne on 'orders' collection...");
-      result = await db.collection("orders").insertOne(orderData);
-      console.log("[ORDER POST] ✓ insertOne returned");
-      console.log("[ORDER POST] Result:", {
-        insertedId: result.insertedId?.toString(),
-        acknowledged: result.acknowledged,
-      });
-    } catch (insertError) {
-      console.error("[ORDER POST] ✗ insertOne failed:", insertError);
-      throw insertError;
-    }
+    // Insert order into database
+    const result = await db.collection("orders").insertOne(orderData);
 
     if (!result.insertedId) {
-      console.error("[ORDER POST] ✗ No insertedId in result!");
-      throw new Error("Order was not inserted into database");
+      console.error("[ORDER POST] No insertedId returned from insertOne");
+      throw new Error("Order insertion failed");
     }
 
-    console.log("[ORDER POST] ✓ Order inserted with ID:", result.insertedId.toString());
-
-    // Verify the insert by reading it back
-    try {
-      console.log("[ORDER POST] Verifying insert by reading back...");
-      const verifyRead = await db.collection("orders").findOne({ _id: result.insertedId });
-      console.log("[ORDER POST] ✓ Verification read successful:", verifyRead ? "FOUND" : "NOT FOUND");
-    } catch (verifyError) {
-      console.error("[ORDER POST] Warning: Verification read failed:", verifyError);
-    }
-
-    // Send confirmation emails
-    const customerEmail = delivery_address?.email || shipping?.email || session.username;
-    try {
-      console.log("[ORDER POST] Sending confirmation emails...");
-      const emailResponse = await fetch(
-        `${process.env.NEXTAUTH_URL || "http://localhost:3000"}/api/orders/send-email`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            order: {
-              displayOrderId,
-              createdAt: new Date().toISOString(),
-              items,
-              delivery_address: delivery_address || shipping,
-              total,
-              payment_slip_url,
-              payment_slip_filename,
-            },
-            customerEmail,
-          }),
-        }
-      );
-      if (!emailResponse.ok) {
-        console.warn("[ORDER POST] Email sending returned status:", emailResponse.status);
-      } else {
-        console.log("[ORDER POST] ✓ Emails sent successfully");
-      }
-    } catch (emailError) {
-      console.error("[ORDER POST] Warning: Email sending failed (non-blocking):", emailError);
-    }
-
-    // Decrement stock for the ordered decant size
-    for (const item of items) {
-      if (ObjectId.isValid(item.productId) && item.size) {
-        const sizeNum = parseFloat(item.size);
-        try {
-          console.log(`[ORDER POST] Decrementing stock for product ${item.productId}, size ${sizeNum}...`);
-          const updateResult = await db.collection("products").updateOne(
-            { _id: new ObjectId(item.productId) },
-            { $inc: { "decants.$[elem].stock": -item.quantity } },
-            { arrayFilters: [{ "elem.size": sizeNum }] }
-          );
-          console.log(`[ORDER POST] ✓ Stock update - matched: ${updateResult.matchedCount}, modified: ${updateResult.modifiedCount}`);
-        } catch (stockError) {
-          console.error(`[ORDER POST] ✗ Stock decrement failed for ${item.productId}:`, stockError);
-        }
-      }
-    }
-
-    console.log("[ORDER POST] ========== ORDER POST SUCCESS ==========");
-    return NextResponse.json(
+    // Return 201 immediately; background tasks execute after response is sent
+    const response = NextResponse.json(
       {
         message: "Order placed successfully.",
         orderId: displayOrderId,
       },
       { status: 201 }
     );
+
+    // Background tasks: send emails and decrement stock
+    after(async () => {
+      try {
+        // Send confirmation emails
+        const customerEmail =
+          delivery_address?.email || shipping?.email || session.username;
+
+        try {
+          await fetch(
+            `${process.env.NEXTAUTH_URL || "http://localhost:3000"}/api/orders/send-email`,
+            {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                order: {
+                  displayOrderId,
+                  createdAt: new Date().toISOString(),
+                  items,
+                  delivery_address: delivery_address || shipping,
+                  total,
+                  payment_slip_url,
+                  payment_slip_filename,
+                },
+                customerEmail,
+              }),
+            }
+          );
+        } catch (emailError) {
+          console.error(
+            "[ORDER BACKGROUND] Email sending failed:",
+            emailError
+          );
+        }
+
+        // Decrement stock for the ordered decant sizes
+        for (const item of items) {
+          if (ObjectId.isValid(item.productId) && item.size) {
+            const sizeNum = parseFloat(item.size);
+            try {
+              await db.collection("products").updateOne(
+                { _id: new ObjectId(item.productId) },
+                { $inc: { "decants.$[elem].stock": -item.quantity } },
+                { arrayFilters: [{ "elem.size": sizeNum }] }
+              );
+            } catch (stockError) {
+              console.error(
+                `[ORDER BACKGROUND] Stock decrement failed for ${item.productId}:`,
+                stockError
+              );
+            }
+          }
+        }
+      } catch (err) {
+        console.error("[ORDER BACKGROUND] Background task failed:", err);
+      }
+    });
+
+    return response;
   } catch (error) {
-    console.error("[ORDER POST] ========== ORDER POST FAILED ==========");
-    console.error("[ORDER POST] Error message:", error instanceof Error ? error.message : String(error));
-    console.error("[ORDER POST] Error stack:", error instanceof Error ? error.stack : "No stack trace");
-    console.error("[ORDER POST] Full error object:", JSON.stringify(error, Object.getOwnPropertyNames(error)));
-    
+    console.error(
+      "[ORDER POST] Error:",
+      error instanceof Error ? error.message : String(error)
+    );
+
     return NextResponse.json(
       { message: "Unable to place your order." },
       { status: 500 }
