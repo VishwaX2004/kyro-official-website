@@ -243,12 +243,31 @@ export async function POST(request: Request) {
                 <tr>
                   <td style="padding: 0 20px 30px;">
                     <p style="margin: 0 0 12px; font-size: 12px; color: #806537; text-transform: uppercase; font-weight: 700; letter-spacing: 0.1em;">Payment Details</p>
-                    <table width="100%" cellpadding="0" cellspacing="0" style="background: #fbfaf7; border: 1px solid rgba(170, 137, 83, 0.15); border-radius: 8px; padding: 15px; font-family: 'Courier New', monospace; font-size: 12px; color: #171717;">
-                      <tr><td><strong>Bank:</strong> People's Bank</td></tr>
-                      <tr><td><strong>Account Name:</strong> Kyro Fragrances</td></tr>
-                      <tr><td><strong>Account Number:</strong> 212-1-002-3-0030826</td></tr>
-                      <tr><td><strong>Branch:</strong> Kiribathgoda</td></tr>
-                      <tr><td><strong>SWIFT Code:</strong> PSBKLKLX</td></tr>
+                    <table width="100%" cellpadding="0" cellspacing="0" style="background: linear-gradient(135deg, rgba(170, 137, 83, 0.12) 0%, rgba(170, 137, 83, 0.06) 100%); border: 2px solid #aa8953; border-radius: 8px; padding: 15px; font-family: 'Courier New', monospace; font-size: 13px; color: #171717;">
+                      <tr>
+                        <td style="padding: 10px; background: white; border-radius: 6px; margin-bottom: 8px; border: 1px solid rgba(170, 137, 83, 0.2); display: block; margin-bottom: 8px;">
+                          <strong style="color: #806537; font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em;">Bank:</strong><br/>
+                          <span style="font-weight: 600; color: #171717;">Commercial Bank</span>
+                        </td>
+                      </tr>
+                      <tr>
+                        <td style="padding: 10px; background: white; border-radius: 6px; margin-bottom: 8px; border: 1px solid rgba(170, 137, 83, 0.2); display: block; margin-bottom: 8px;">
+                          <strong style="color: #806537; font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em;">Account Number:</strong><br/>
+                          <span style="font-weight: 600; color: #171717; font-size: 15px;">8029116122</span>
+                        </td>
+                      </tr>
+                      <tr>
+                        <td style="padding: 10px; background: white; border-radius: 6px; margin-bottom: 8px; border: 1px solid rgba(170, 137, 83, 0.2); display: block; margin-bottom: 8px;">
+                          <strong style="color: #806537; font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em;">Account Name:</strong><br/>
+                          <span style="font-weight: 600; color: #171717;">N.A.K.I Neththasingha</span>
+                        </td>
+                      </tr>
+                      <tr>
+                        <td style="padding: 10px; background: white; border-radius: 6px; border: 1px solid rgba(170, 137, 83, 0.2); display: block;">
+                          <strong style="color: #806537; font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em;">Branch:</strong><br/>
+                          <span style="font-weight: 600; color: #171717;">Narammala Branch</span>
+                        </td>
+                      </tr>
                     </table>
                   </td>
                 </tr>

@@ -1309,16 +1309,145 @@ export default function CheckoutPage() {
                   <p style={{ margin: "0 0 12px", fontSize: "12px", color: "var(--kyro-muted)" }}>
                     Bank Transfer Instructions
                   </p>
-                  <div className="bank-details">
-                    <strong>Bank:</strong> People's Bank
-                    <br />
-                    <strong>Account Name:</strong> Kyro Fragrances
-                    <br />
-                    <strong>Account Number:</strong> 212-1-002-3-0030826
-                    <br />
-                    <strong>Branch:</strong> Kiribathgoda
-                    <br />
-                    <strong>Swift/BIC:</strong> PSBKLKLX
+                  <style>{`
+                    .bank-details-container {
+                      background: linear-gradient(135deg, rgba(170, 137, 83, 0.15) 0%, rgba(170, 137, 83, 0.08) 100%);
+                      border: 2px solid #aa8953;
+                      border-radius: 12px;
+                      padding: 16px;
+                      margin-top: 8px;
+                    }
+                    
+                    .bank-detail-row {
+                      display: flex;
+                      align-items: center;
+                      gap: 12px;
+                      margin-bottom: 12px;
+                      padding: 12px;
+                      background: white;
+                      border-radius: 8px;
+                      border: 1px solid rgba(170, 137, 83, 0.2);
+                    }
+                    
+                    .bank-detail-row:last-child {
+                      margin-bottom: 0;
+                    }
+                    
+                    .bank-label {
+                      min-width: 120px;
+                      font-weight: 700;
+                      color: #806537;
+                      font-size: 11px;
+                      text-transform: uppercase;
+                      letter-spacing: 0.08em;
+                    }
+                    
+                    .bank-value {
+                      flex: 1;
+                      font-family: 'Courier New', monospace;
+                      font-weight: 600;
+                      color: #171717;
+                      font-size: 13px;
+                      padding: 8px 12px;
+                      background: #fffefa;
+                      border-radius: 6px;
+                      user-select: all;
+                      cursor: pointer;
+                      transition: all 0.2s ease;
+                    }
+                    
+                    .bank-value:hover {
+                      background: #f5f2e9;
+                      box-shadow: 0 2px 8px rgba(170, 137, 83, 0.15);
+                    }
+                    
+                    .copy-btn {
+                      background: #aa8953;
+                      border: none;
+                      border-radius: 6px;
+                      width: 36px;
+                      height: 36px;
+                      cursor: pointer;
+                      display: flex;
+                      align-items: center;
+                      justify-content: center;
+                      font-size: 16px;
+                      transition: all 0.2s ease;
+                      padding: 0;
+                      flex-shrink: 0;
+                    }
+                    
+                    .copy-btn:hover {
+                      background: #806537;
+                      transform: scale(1.05);
+                      box-shadow: 0 4px 12px rgba(170, 137, 83, 0.25);
+                    }
+                    
+                    .copy-btn:active {
+                      transform: scale(0.95);
+                    }
+                  `}</style>
+                  <div className="bank-details-container">
+                    <div className="bank-detail-row">
+                      <span className="bank-label">Bank:</span>
+                      <span className="bank-value">Commercial Bank</span>
+                      <button 
+                        type="button"
+                        className="copy-btn" 
+                        onClick={() => {
+                          navigator.clipboard.writeText('Commercial Bank');
+                          toast.success('Copied to clipboard!');
+                        }} 
+                        title="Copy to clipboard"
+                      >
+                        📋
+                      </button>
+                    </div>
+                    <div className="bank-detail-row">
+                      <span className="bank-label">Account Number:</span>
+                      <span className="bank-value">8029116122</span>
+                      <button 
+                        type="button"
+                        className="copy-btn" 
+                        onClick={() => {
+                          navigator.clipboard.writeText('8029116122');
+                          toast.success('Copied to clipboard!');
+                        }} 
+                        title="Copy to clipboard"
+                      >
+                        📋
+                      </button>
+                    </div>
+                    <div className="bank-detail-row">
+                      <span className="bank-label">Account Name:</span>
+                      <span className="bank-value">N.A.K.I Neththasingha</span>
+                      <button 
+                        type="button"
+                        className="copy-btn" 
+                        onClick={() => {
+                          navigator.clipboard.writeText('N.A.K.I Neththasingha');
+                          toast.success('Copied to clipboard!');
+                        }} 
+                        title="Copy to clipboard"
+                      >
+                        📋
+                      </button>
+                    </div>
+                    <div className="bank-detail-row">
+                      <span className="bank-label">Branch:</span>
+                      <span className="bank-value">Narammala Branch</span>
+                      <button 
+                        type="button"
+                        className="copy-btn" 
+                        onClick={() => {
+                          navigator.clipboard.writeText('Narammala Branch');
+                          toast.success('Copied to clipboard!');
+                        }} 
+                        title="Copy to clipboard"
+                      >
+                        📋
+                      </button>
+                    </div>
                   </div>
                 </div>
 
