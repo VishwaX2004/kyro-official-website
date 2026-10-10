@@ -1,84 +1,87 @@
-# Toast notifications, missing API routes, TypeScript fix, and skeleton loader — pass 2
+# WhatsApp Button Redesign & Mobile Responsiveness
 
-Two commits since the last review (`17970496` and `f206ca2f`) complete the implementation plan. All three blocking concerns from pass 1 are addressed: the stock decrement now uses `$[elem]` + `arrayFilters`, the five previously uncommitted files are now committed to HEAD, and the working tree is clean. The build output artifact is still the same empty capture from before any of these commits, so `next build` remains unverified at the artifact level.
+The WhatsApp contact button has been redesigned from a circular icon to a modern pill-shaped button with "Chat with Seller" text, and comprehensive mobile responsiveness has been added across store pages with proper touch target sizing and 16px input fonts for iOS compatibility.
 
-Watch for: (1) **Build output unverified** (confirmed) — `build-output.txt` contains only the bare `next build` invocation with no output, predating all implementation commits. The actual build result is unknown. `npx tsc --noEmit` exits 0, but `next build` runs RSC boundary analysis and static generation that `tsc` does not cover.
+Watch for: WhatsAppButton component correctly excludes login and admin pages via layout structure rather than pathname checks (auth and admin layouts don't include it). Desktop layouts are unchanged. Build passed successfully.
 
 **Verdict**: APPROVED
 
----
-
 ## High-level view
 
-All 15 plan items are implemented and committed. `react-hot-toast@^2.4.1` is in `package.json` and `<Toaster />` is wired into `app/layout.tsx` with brand-consistent styling. Every file the plan named (`login/page.tsx`, `StoreHeader.tsx`, `AddToCartButton.tsx`, `cart/page.tsx`, `orders/page.tsx`, `account/page.tsx`, `ContactForm.tsx`, `admin/page.tsx`) imports `toast` and fires `toast.success` / `toast.error` on the required paths.
+The WhatsApp button moved from a generic floating design to a branded, accessible pill-shaped component with the WhatsApp logo and "Chat with Seller" label. The button is positioned in the bottom-right corner with bottom-right positioning that adapts to tablet and mobile viewports. Exclusion from sensitive areas (checkout, admin, auth pages) is handled via route-level layout structure: the auth layout and admin layout don't render the component at all, and the store layout conditionally hides it on `/checkout` routes using pathname checks. The component gracefully collapses the text label on extra-small screens (375px), showing only the logo.
 
-The `emptyForms` constant is now typed `Record<CollectionResource, Record<string, string | string[]>>`, eliminating the union-narrowing IDE error at line 3620. Both missing API routes (`/api/orders`, `/api/contact`) exist with auth checks, input validation, and MongoDB writes. The orders POST decrements stock for the specific ordered size via `arrayFilters` — the fix in the second commit correctly replaced the all-positional `$[]` operator. `AddToCartButton.tsx` always writes `size: product.size || "5ml"` to the cart, so the `item.size` guard in the orders route will always pass for normally-added items.
-
-The shop page uses `next/image`, Supabase's hostname is registered in `next.config.ts`, and `app/(store)/shop/loading.tsx` exports an 8-card pulse-skeleton that mirrors the product grid at all breakpoints. The contact form replaces the fake `setTimeout` with a real `fetch("/api/contact", ...)` call.
-
-The one open item is the build artifact. `tsc` exits 0, all files type-check, and there are no structural issues that would cause `next build` to fail — but the captured output file predates all implementation work and cannot serve as verification.
-
----
+Mobile responsiveness spans cart, checkout, contact, account, orders, and footer pages with consistent patterns: 768px breakpoints handle tablet layouts with 44px touch targets and 16px input font-size to prevent iOS zoom; 480px breakpoints refine spacing and font sizes; 375px breakpoints collapse less essential content and use 40px targets where appropriate. Input and textarea elements uniformly specify 16px font-size in mobile media queries to prevent iOS auto-zoom on focus. The checkout page's consolidated media queries avoid duplicate 768px rules. Desktop styles remain untouched with no media query contamination.
 
 <details>
 <summary>Issues (1)</summary>
 
-1. **Build output unverified** — `build-output.txt` was captured before any implementation commit and contains no build output. Run `npm run build` against HEAD and capture the output to confirm static generation, RSC boundary analysis, and image config validation all pass before shipping.
+1. **Dead CSS in orders page** — The `.floating-chat` class has media query rules (768px) but is not used in the JSX. Remove this unused class to reduce bundle size.
+
+</details>
+
+## Details
+
+<details>
+<summary>WhatsApp Button Component Design</summary>
+
+The button implements a pill-shaped design (28px border-radius) with the official WhatsApp SVG logo and "Chat with Seller" text. Desktop: 52px height, 155px minimum width, smooth 0.3s cubic-bezier hover animation. Mobile scales progressively: 768px (50px, 150px min), 480px (50px auto), 375px (44px auto, text hidden to save space). At 375px the button becomes icon-only, preserving usability on very small screens.
+
+The link is properly accessible with `aria-label="Chat with Seller on WhatsApp"` and uses WhatsApp's direct message API. Position ranges from `bottom/right: 30px` on desktop to `12px` on 375px screens, respecting safe areas on notched devices.
 
 </details>
 
 <details>
-<summary>Details</summary>
+<summary>Button Placement & Route Exclusions</summary>
 
-### Build verification gap
-
-The `build-output.txt` artifact at the workspace root contains:
-
-```
-> kyro-web@0.1.0 build
-> next build
-
-```
-
-No route table, no static page counts, no compilation result — the process either failed silently or the output was not redirected. This file was written at 4:10 PM; both implementation commits landed after 4:41 PM. `npx tsc --noEmit` exits 0, and there are no obvious patterns that would break `next build` (no Server/Client boundary misuse observed in the new files, image config is correctly shaped), but the build has not been verified against HEAD.
-
-### Pass-1 issues resolved
-
-The all-positional `$[]` stock decrement is replaced with `$[elem]` + `{ arrayFilters: [{ "elem.size": item.size }] }` in `f206ca2f`. The guard `if (ObjectId.isValid(item.productId) && item.size)` ensures the update only runs when a size is present; since `AddToCartButton.tsx` always writes `size: product.size || "5ml"`, this is always truthy for normally-added items.
-
-The five previously uncommitted files (`about/page.tsx`, `contact/page.tsx`, `(store)/page.tsx`, `api/admin/[resource]/route.ts`, `globals.css`) are included in the HEAD commit. The admin resource route now validates `decants` array presence instead of `price`, which aligns with the decant-based product model.
+WhatsAppButton renders in `app/(store)/layout.tsx`, which wraps store routes. Exclusions are architectural: `app/(auth)/layout.tsx` and `app/admin/layout.tsx` don't include the component, so login and admin pages never see it. Checkout routes use a pathname check (`hideWhatsApp = pathname === "/checkout" || pathname.startsWith("/admin")`) in the store layout, which is slightly defensive (admin already has its own layout) but harmless.
 
 </details>
-
----
 
 <details>
-<summary>File map</summary>
+<summary>Mobile Responsiveness Strategy</summary>
 
-| File | Change |
-|------|--------|
-| `package.json` | Added `react-hot-toast@^2.4.1` |
-| `package-lock.json` | Lockfile updated |
-| `app/layout.tsx` | Added `<Toaster />` with brand styling |
-| `app/admin/page.tsx` | Fixed `emptyForms` type; added toast on CRUD, load errors, validation, settings API call |
-| `app/(auth)/login/page.tsx` | Added toast on login/register success and error |
-| `app/components/StoreHeader.tsx` | Added toast on logout success and error |
-| `app/(store)/shop/AddToCartButton.tsx` | Added toast on add-to-cart success and error |
-| `app/(store)/cart/page.tsx` | Added toast on item removal, order success, and order error |
-| `app/(store)/orders/page.tsx` | Added toast on fetch error |
-| `app/(store)/account/page.tsx` | Added toast on profile/password update success and error |
-| `app/(store)/contact/ContactForm.tsx` | Replaced fake setTimeout with real `/api/contact` fetch; added toasts |
-| `app/(store)/shop/page.tsx` | Replaced `<img>` with `next/image` |
-| `app/(store)/shop/loading.tsx` | New 8-card pulse skeleton for shop route segment |
-| `app/api/orders/route.ts` | New GET + POST; stock decrement uses arrayFilters (fixed in f206ca2f) |
-| `app/api/contact/route.ts` | New POST with input validation and MongoDB write |
-| `next.config.ts` | Added Supabase remotePatterns |
-| `app/(store)/about/page.tsx` | Visual rewrite |
-| `app/(store)/contact/page.tsx` | Visual rewrite |
-| `app/(store)/page.tsx` | Minor hero padding adjustment |
-| `app/api/admin/[resource]/route.ts` | Product validation: require `decants` array instead of `price` |
-| `app/globals.css` | Added scrollable admin modal CSS |
+Three primary breakpoints apply across cart, checkout, contact, account, orders, and footer:
 
-Full diff: `git -C d:\Devlopment\Kyro-Web diff 6a77783d HEAD`
+**768px (tablet):** Forms switch to single-column, inputs/textareas get 44px height and 16px font-size (iOS zoom prevention), buttons reach WCAG 44px targets, sidebars move full-width.
+
+**480px (small mobile):** Further font reductions and padding adjustments, heading sizes scale down, form layouts collapse, button groups stack.
+
+**375px (extra-small):** 40px targets (slightly reduced for space), more aggressive font reductions, decorative elements hidden (e.g., Footer glows), input font-size stays 16px.
+
+The 16px input rule prevents iOS from auto-zooming on focus—a critical mobile pattern consistently applied across checkout, contact, account, and cart.
 
 </details>
+
+<details>
+<summary>Responsive Implementation Details</summary>
+
+**Footer:** 768px collapses grid to single column, nav wraps; 480px reduces padding and scales text; 375px hides decorative glows, shrinks fonts to 7-8px.
+
+**Cart:** 768px adjusts heading and padding; 480px compresses item layout; 375px uses 60px images, 40px controls, 16px input.
+
+**Checkout:** 768px switches to single-column with 44px inputs and 16px font, stacks progress indicator; 480px scales heading to 2rem; 375px uses 14px form padding. Single 768px media query block (no duplication).
+
+**Contact:** 768px collapses grid, sets inputs to 44px with 16px font; 480px scales heading to 1.5rem; 375px sets heading to 1.3rem with 16px input.
+
+**Account:** 768px collapses grid to single-column, nav to 2-column, inputs to 44px with 16px font; 480px scales heading to 26px; 375px heading 22px with 40px inputs and 16px font.
+
+**Orders:** 768px adjusts modal layout; 480px compresses spacing. Dead CSS remains: `.floating-chat` class unused.
+
+Desktop layouts untouched, all changes additive within mobile breakpoints.
+
+</details>
+
+## File map
+
+- **app/components/WhatsAppButton.tsx** — New pill-shaped button with logo, text, and responsive breakpoints (768px, 480px, 375px)
+- **app/(store)/layout.tsx** — Renders WhatsAppButton with pathname check to exclude checkout; auth/admin layouts handle their own exclusions
+- **app/(store)/orders/page.tsx** — Old floating chat button removed from JSX; dead CSS class remains (`.floating-chat`)
+- **app/components/Footer.tsx** — Added 768px, 480px, 375px media queries for responsive grid, padding, and font sizes
+- **app/(store)/cart/page.tsx** — Added 768px, 480px, 375px breakpoints; 375px includes 16px input font-size rule
+- **app/(store)/checkout/page.tsx** — Added single 768px block with 16px input font-size, 480px and 375px rules for spacing
+- **app/(store)/contact/page.tsx** — Added 768px, 480px, 375px rules; 768px sets 16px input font-size
+- **app/(store)/account/page.tsx** — Added 768px, 480px, 420px, 375px rules; 768px sets 16px input font-size
+- **app/(auth)/layout.tsx** — Auth layout does not include WhatsAppButton (exclusion via structure)
+- **app/admin/layout.tsx** — Admin layout does not include WhatsAppButton (exclusion via structure)
+
+Full diff available in git history.

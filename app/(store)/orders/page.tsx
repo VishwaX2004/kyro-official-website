@@ -1343,62 +1343,6 @@ export default function OrdersPage() {
           box-shadow: 0 14px 30px rgba(23, 23, 23, 0.16);
         }
 
-        .floating-chat {
-          position: fixed;
-          right: 24px;
-          bottom: 24px;
-          z-index: 50;
-          display: flex;
-          align-items: center;
-          gap: 10px;
-          padding: 13px 17px 13px 13px;
-          border: 1px solid rgba(255, 255, 255, 0.15);
-          border-radius: 999px;
-          background: var(--kyro-dark);
-          color: white;
-          text-decoration: none;
-          box-shadow: 0 20px 45px rgba(23, 23, 23, 0.2);
-          animation:
-            chatAppear 0.8s 0.8s ease both,
-            chatFloat 3.5s 1.6s ease-in-out infinite;
-          transition:
-            transform 0.25s ease,
-            box-shadow 0.25s ease;
-        }
-
-        .floating-chat:hover {
-          transform: translateY(-5px) scale(1.02);
-          box-shadow: 0 25px 55px rgba(23, 23, 23, 0.28);
-        }
-
-        .chat-icon {
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          width: 34px;
-          height: 34px;
-          border-radius: 50%;
-          background: var(--kyro-gold);
-          color: white;
-          font-size: 15px;
-        }
-
-        .chat-copy {
-          display: flex;
-          flex-direction: column;
-          gap: 2px;
-        }
-
-        .chat-copy strong {
-          font-size: 11px;
-          letter-spacing: 0.02em;
-        }
-
-        .chat-copy span {
-          color: rgba(255, 255, 255, 0.58);
-          font-size: 9px;
-        }
-
         .loading-state {
           display: flex;
           min-height: 430px;
@@ -1601,20 +1545,6 @@ export default function OrdersPage() {
             width: 100%;
             height: 160px;
             border-radius: 14px;
-          }
-
-          .floating-chat {
-            right: 15px;
-            bottom: 15px;
-            padding-right: 14px;
-          }
-
-          .chat-copy span {
-            display: none;
-          }
-
-          .chat-copy strong {
-            font-size: 10px;
           }
 
           .details-button {
