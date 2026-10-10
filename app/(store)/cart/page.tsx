@@ -2,7 +2,6 @@
 
 import Link from "next/link";
 import {
-  FormEvent,
   useMemo,
   useState,
 } from "react";
@@ -18,17 +17,11 @@ export default function CartPage() {
     readCart()
   );
 
-  const [checkout, setCheckout] =
-    useState(false);
-
   const [message, setMessage] =
     useState("");
 
   const [removingId, setRemovingId] =
     useState<string | null>(null);
-
-  const [loading, setLoading] =
-    useState(false);
 
   const total = useMemo(
     () =>
@@ -150,107 +143,16 @@ export default function CartPage() {
      PLACE ORDER
      ========================================================= */
 
-  async function placeOrder(
-    event: FormEvent<HTMLFormElement>
-  ) {
-    event.preventDefault();
-
-    if (loading) return;
-
-    const form = event.currentTarget;
-
-    const shipping =
-      Object.fromEntries(
-        new FormData(form).entries()
-      ) as {
-        name: string;
-        email: string;
-        phone: string;
-        address: string;
-        city: string;
-        postalCode: string;
-      };
-
+  function proceedToCheckout() {
     if (!items.length) {
       toast.error(
         "Your cart is empty."
       );
-
-      setCheckout(false);
-
       return;
     }
 
-    setLoading(true);
-
-    const toastId = toast.loading("Processing your order...");
-
-    try {
-      const response = await fetch(
-        "/api/orders",
-        {
-          method: "POST",
-
-          headers: {
-            "Content-Type":
-              "application/json",
-          },
-
-          body: JSON.stringify({
-            items,
-            shipping,
-          }),
-        }
-      );
-
-      const data =
-        (await response.json()) as {
-          message?: string;
-          orderId?: string;
-        };
-
-      if (!response.ok) {
-        const errMsg =
-          data.message ??
-          "Unable to place your order.";
-
-        setMessage(errMsg);
-
-        toast.dismiss(toastId);
-        toast.error(errMsg, { duration: 6000 });
-
-        setLoading(false);
-        return;
-      }
-
-      const shortId =
-        data.orderId ?? "";
-
-      const successMsg =
-        `Order ${shortId} confirmed. ` +
-        `Thank you for choosing Kyro.`;
-
-      saveCart([]);
-
-      setItems([]);
-
-      setCheckout(false);
-
-      setMessage(successMsg);
-
-      toast.dismiss(toastId);
-      toast.success(successMsg);
-    } catch {
-      const errMsg =
-        "Something went wrong placing your order. Please try again.";
-
-      setMessage(errMsg);
-
-      toast.dismiss(toastId);
-      toast.error(errMsg, { duration: 6000 });
-    } finally {
-      setLoading(false);
-    }
+    // Navigate to checkout page
+    window.location.href = "/checkout";
   }
 
   return (
@@ -2641,9 +2543,7 @@ export default function CartPage() {
                 <button
                   type="button"
                   className="checkout-button"
-                  onClick={() =>
-                    setCheckout(true)
-                  }
+                  onClick={proceedToCheckout}
                 >
                   <span>
                     Continue to checkout
@@ -2707,103 +2607,9 @@ export default function CartPage() {
       </main>
 
       {/* =========================================================
-          CHECKOUT MODAL
+          CHECKOUT MODAL - REMOVED
           ========================================================= */}
-
-      {checkout && (
-
-        <div
-          className="checkout-backdrop"
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby="checkout-title"
-        >
-
-          <form
-            className="checkout-card"
-            onSubmit={placeOrder}
-          >
-
-            <button
-              type="button"
-              className="close-button"
-              onClick={() =>
-                setCheckout(false)
-              }
-              aria-label="Close checkout"
-            >
-              ×
-            </button>
-
-            <p className="store-eyebrow">
-              CHECKOUT / DELIVERY
-            </p>
-
-            <h2 id="checkout-title">
-              Where should Kyro arrive?
-            </h2>
-
-            <input
-              name="name"
-              placeholder="Full name"
-              autoComplete="name"
-              required
-            />
-
-            <input
-              name="email"
-              type="email"
-              placeholder="Email address"
-              autoComplete="email"
-              required
-            />
-
-            <input
-              name="phone"
-              type="tel"
-              placeholder="Phone number"
-              autoComplete="tel"
-              required
-            />
-
-            <input
-              name="address"
-              placeholder="Street address"
-              autoComplete="street-address"
-              required
-            />
-
-            <div className="checkout-row">
-
-              <input
-                name="city"
-                placeholder="City"
-                autoComplete="address-level2"
-                required
-              />
-
-              <input
-                name="postalCode"
-                placeholder="Postal code"
-                autoComplete="postal-code"
-                required
-              />
-
-            </div>
-
-            <button
-              className="checkout-submit"
-              type="submit"
-              disabled={loading}
-            >
-              {loading ? "Processing..." : "Place order →"}
-            </button>
-
-          </form>
-
-        </div>
-
-      )}
+      {/* The checkout flow has been moved to a dedicated /checkout page */}
     </>
   );
 }

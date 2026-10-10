@@ -90,7 +90,16 @@ export async function POST(request: Request) {
         size?: string;
         imageUrl?: string;
       }[];
-      shipping: {
+      delivery_address?: {
+        name: string;
+        email: string;
+        phone: string;
+        street: string;
+        city: string;
+        postalCode: string;
+        country: string;
+      };
+      shipping?: {
         name: string;
         email: string;
         phone: string;
@@ -98,12 +107,15 @@ export async function POST(request: Request) {
         city: string;
         postalCode: string;
       };
+      payment_slip_url?: string;
+      payment_slip_filename?: string;
     };
 
-    const { items, shipping } = body;
+    const { items, shipping, delivery_address, payment_slip_url, payment_slip_filename } = body;
     console.log("[ORDER POST] Items count:", items?.length);
     console.log("[ORDER POST] First item:", items?.[0]);
     console.log("[ORDER POST] Shipping name:", shipping?.name);
+    console.log("[ORDER POST] Delivery address:", delivery_address?.name);
 
     if (!Array.isArray(items) || items.length === 0) {
       console.warn("[ORDER POST] Empty items array - returning 400");
@@ -167,8 +179,11 @@ export async function POST(request: Request) {
       customerName: session.username,
       items,
       shipping,
+      delivery_address,
+      payment_slip_url,
+      payment_slip_filename,
       total,
-      status: "pending",
+      status: "pending_payment_verification",
       displayOrderId,
       createdAt: new Date(),
       updatedAt: new Date(),
@@ -203,6 +218,38 @@ export async function POST(request: Request) {
       console.log("[ORDER POST] ✓ Verification read successful:", verifyRead ? "FOUND" : "NOT FOUND");
     } catch (verifyError) {
       console.error("[ORDER POST] Warning: Verification read failed:", verifyError);
+    }
+
+    // Send confirmation emails
+    const customerEmail = delivery_address?.email || shipping?.email || session.username;
+    try {
+      console.log("[ORDER POST] Sending confirmation emails...");
+      const emailResponse = await fetch(
+        `${process.env.NEXTAUTH_URL || "http://localhost:3000"}/api/orders/send-email`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            order: {
+              displayOrderId,
+              createdAt: new Date().toISOString(),
+              items,
+              delivery_address: delivery_address || shipping,
+              total,
+              payment_slip_url,
+              payment_slip_filename,
+            },
+            customerEmail,
+          }),
+        }
+      );
+      if (!emailResponse.ok) {
+        console.warn("[ORDER POST] Email sending returned status:", emailResponse.status);
+      } else {
+        console.log("[ORDER POST] ✓ Emails sent successfully");
+      }
+    } catch (emailError) {
+      console.error("[ORDER POST] Warning: Email sending failed (non-blocking):", emailError);
     }
 
     // Decrement stock for the ordered decant size
