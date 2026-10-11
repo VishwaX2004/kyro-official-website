@@ -4,6 +4,7 @@ import Link from "next/link";
 import {
   useMemo,
   useState,
+  useEffect,
 } from "react";
 import {
   CartItem,
@@ -14,15 +15,21 @@ import toast from "react-hot-toast";
 import WhatsAppButton from "@/app/components/WhatsAppButton";
 
 export default function CartPage() {
-  const [items, setItems] = useState<CartItem[]>(() =>
-    readCart()
-  );
+  const [isHydrated, setIsHydrated] = useState(false);
+  
+  const [items, setItems] = useState<CartItem[]>([]);
 
   const [message, setMessage] =
     useState("");
 
   const [removingId, setRemovingId] =
     useState<string | null>(null);
+
+  // Hydrate from localStorage
+  useEffect(() => {
+    setItems(readCart());
+    setIsHydrated(true);
+  }, []);
 
   const total = useMemo(
     () =>
@@ -57,28 +64,33 @@ export default function CartPage() {
     ).format(price);
   }
 
+  // A product can have multiple cart entries (for example, 5ml and 10ml).
+  // Include the selected size so each variant is updated independently.
+  function getCartItemKey(item: CartItem): string {
+    return `${item.productId}::${String(item.size ?? "default")}`;
+  }
+
   /* =========================================================
      UPDATE QUANTITY
      ========================================================= */
 
   function update(
-    productId: string,
+    cartItemId: string,
     quantity: number
   ) {
     const currentItem = items.find(
-      (item) =>
-        item.productId === productId
+      (item) => getCartItemKey(item) === cartItemId
     );
 
     if (!currentItem) return;
 
     if (quantity <= 0) {
-      removeItem(productId);
+      removeItem(cartItemId);
       return;
     }
 
     const next = items.map((item) =>
-      item.productId === productId
+      getCartItemKey(item) === cartItemId
         ? {
             ...item,
             quantity,
@@ -94,24 +106,23 @@ export default function CartPage() {
      REMOVE ITEM
      ========================================================= */
 
-  function removeItem(productId: string) {
+  function removeItem(cartItemId: string) {
     const item = items.find(
-      (cartItem) =>
-        cartItem.productId === productId
+      (cartItem) => getCartItemKey(cartItem) === cartItemId
     );
 
     if (!item) return;
 
-    setRemovingId(productId);
+    setRemovingId(cartItemId);
 
     /*
      * Small delay allows the remove animation
      * to play before the item disappears.
      */
     window.setTimeout(() => {
+      // Remove only the exact product-size entry that was clicked.
       const next = items.filter(
-        (cartItem) =>
-          cartItem.productId !== productId
+        (cartItem) => getCartItemKey(cartItem) !== cartItemId
       );
 
       setItems(next);
@@ -120,7 +131,7 @@ export default function CartPage() {
       setRemovingId(null);
 
       toast.success(
-        `${item.name} removed from cart.`
+        `${item.name} (${item.size ?? "Decant"}) removed from cart.`
       );
     }, 300);
   }
@@ -2419,7 +2430,8 @@ export default function CartPage() {
       />
 
       <main className="kyro-cart-page">
-        <div className="kyro-cart-inner">
+        {isHydrated ? (
+          <div className="kyro-cart-inner">
 
           {/* =====================================================
               PAGE HEADER
@@ -2501,15 +2513,14 @@ export default function CartPage() {
 
                 </div>
 
-                {items.map((item, index) => {
+                {items.map((item) => {
 
                   const itemTotal =
                     item.price *
                     item.quantity;
 
-                  const isRemoving =
-                    removingId ===
-                    item.productId;
+                  const cartItemId = getCartItemKey(item);
+                  const isRemoving = removingId === cartItemId;
 
                   return (
                     <article
@@ -2518,7 +2529,7 @@ export default function CartPage() {
                           ? "removing"
                           : ""
                       }`}
-                      key={`${item.productId}-${index}`}
+                      key={cartItemId}
                     >
 
                       {/* =========================================
@@ -2587,7 +2598,7 @@ export default function CartPage() {
                             type="button"
                             onClick={() =>
                               update(
-                                item.productId,
+                                cartItemId,
                                 item.quantity - 1
                               )
                             }
@@ -2604,7 +2615,7 @@ export default function CartPage() {
                             type="button"
                             onClick={() =>
                               update(
-                                item.productId,
+                                cartItemId,
                                 item.quantity + 1
                               )
                             }
@@ -2635,7 +2646,7 @@ export default function CartPage() {
                           className="remove-item-button"
                           onClick={() =>
                             removeItem(
-                              item.productId
+                              cartItemId
                             )
                           }
                           aria-label={`Remove ${item.name}`}
@@ -2775,9 +2786,16 @@ export default function CartPage() {
           )}
 
         </div>
+        ) : (
+          <div className="kyro-cart-page" style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <div className="kyro-cart-inner" style={{ textAlign: 'center' }}>
+              <p>Loading cart...</p>
+            </div>
+          </div>
+        )}
       </main>
 
-      <WhatsAppButton />
+      {isHydrated && <WhatsAppButton />}
 
       {/* =========================================================
           CHECKOUT MODAL - REMOVED

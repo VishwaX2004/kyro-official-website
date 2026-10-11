@@ -217,7 +217,7 @@ export default function ContactPage() {
                         minLength={2}
                         value={formData.name}
                         onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                        className="w-full min-h-[44px] rounded-xl border border-black/[0.09] bg-[#fbfaf7] px-4 py-3.5 pl-10 text-sm text-[#171717] outline-none transition placeholder:text-black/30 hover:border-[#b08d50]/50 focus:border-[#b08d50] focus:bg-white focus:ring-4 focus:ring-[#b08d50]/10"
+                        className="w-full min-h-[44px] rounded-xl border border-black/[0.09] bg-[#fbfaf7] px-4 py-3.5 pl-12 text-sm text-[#171717] outline-none transition placeholder:text-black/30 hover:border-[#b08d50]/50 focus:border-[#b08d50] focus:bg-white focus:ring-4 focus:ring-[#b08d50]/10"
                       />
                     </div>
                   </label>
@@ -238,7 +238,7 @@ export default function ContactPage() {
                         required
                         value={formData.email}
                         onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                        className="w-full min-h-[44px] rounded-xl border border-black/[0.09] bg-[#fbfaf7] px-4 py-3.5 pl-10 text-sm text-[#171717] outline-none transition placeholder:text-black/30 hover:border-[#b08d50]/50 focus:border-[#b08d50] focus:bg-white focus:ring-4 focus:ring-[#b08d50]/10"
+                        className="w-full min-h-[44px] rounded-xl border border-black/[0.09] bg-[#fbfaf7] px-4 py-3.5 pl-12 text-sm text-[#171717] outline-none transition placeholder:text-black/30 hover:border-[#b08d50]/50 focus:border-[#b08d50] focus:bg-white focus:ring-4 focus:ring-[#b08d50]/10"
                       />
                     </div>
                   </label>
@@ -261,7 +261,7 @@ export default function ContactPage() {
                       minLength={5}
                       value={formData.subject}
                       onChange={(e) => setFormData({ ...formData, subject: e.target.value })}
-                      className="w-full min-h-[44px] rounded-xl border border-black/[0.09] bg-[#fbfaf7] px-4 py-3.5 pl-10 text-sm text-[#171717] outline-none transition placeholder:text-black/30 hover:border-[#b08d50]/50 focus:border-[#b08d50] focus:bg-white focus:ring-4 focus:ring-[#b08d50]/10"
+                      className="w-full min-h-[44px] rounded-xl border border-black/[0.09] bg-[#fbfaf7] px-4 py-3.5 pl-12 text-sm text-[#171717] outline-none transition placeholder:text-black/30 hover:border-[#b08d50]/50 focus:border-[#b08d50] focus:bg-white focus:ring-4 focus:ring-[#b08d50]/10"
                     />
                   </div>
                 </label>
@@ -281,7 +281,7 @@ export default function ContactPage() {
                       placeholder="+1 (555) 000-0000"
                       value={formData.phone}
                       onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                      className="w-full min-h-[44px] rounded-xl border border-black/[0.09] bg-[#fbfaf7] px-4 py-3.5 pl-10 text-sm text-[#171717] outline-none transition placeholder:text-black/30 hover:border-[#b08d50]/50 focus:border-[#b08d50] focus:bg-white focus:ring-4 focus:ring-[#b08d50]/10"
+                      className="w-full min-h-[44px] rounded-xl border border-black/[0.09] bg-[#fbfaf7] px-4 py-3.5 pl-12 text-sm text-[#171717] outline-none transition placeholder:text-black/30 hover:border-[#b08d50]/50 focus:border-[#b08d50] focus:bg-white focus:ring-4 focus:ring-[#b08d50]/10"
                     />
                   </div>
                 </label>
