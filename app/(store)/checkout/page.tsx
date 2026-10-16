@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
 import toast from "react-hot-toast";
+import { FaWhatsapp } from "react-icons/fa";
 import { readCart, saveCart, CartItem } from "@/lib/cart";
 import { supabase } from "@/lib/supabase";
 
@@ -26,7 +27,19 @@ type User = {
   saved_addresses: SavedAddress[];
 };
 
-type CheckoutStep = "delivery" | "payment" | "review" | "confirmed";
+type CheckoutStep = "delivery" | "review" | "payment";
+
+type CheckoutProgress = {
+  currentStep: CheckoutStep;
+  deliveryForm: SavedAddress;
+  confirmedOrder?: {
+    referenceNumber: string;
+    orderId: string;
+    items: CartItem[];
+    total: number;
+  };
+  savedAt: number;
+};
 
 export default function CheckoutPage() {
   const router = useRouter();
@@ -62,10 +75,46 @@ export default function CheckoutPage() {
   const [receiptUrl, setReceiptUrl] = useState<string>("");
   const [receiptFilename, setReceiptFilename] = useState<string>("");
   const [uploadingReceipt, setUploadingReceipt] = useState(false);
+  const [tempReferenceNumber, setTempReferenceNumber] = useState<string>("");
 
-  // Load cart and user on mount
+  // Progress saving state
+  const [progressSaved, setProgressSaved] = useState(false);
+
+  // Save checkout progress to localStorage
+  function saveCheckoutProgress() {
+    const progress: CheckoutProgress = {
+      currentStep,
+      deliveryForm,
+      confirmedOrder: confirmedOrder || undefined,
+      savedAt: Date.now(),
+    };
+    localStorage.setItem("kyro_checkout_progress", JSON.stringify(progress));
+    setProgressSaved(true);
+    setTimeout(() => setProgressSaved(false), 2000);
+  }
+
+  // Load cart and user on mount, and restore progress if available
   useEffect(() => {
     async function init() {
+      // Check for saved progress first
+      const savedProgress = localStorage.getItem("kyro_checkout_progress");
+      if (savedProgress) {
+        try {
+          const progress = JSON.parse(savedProgress) as CheckoutProgress;
+          // Check if saved data is within 2 hours (7200000ms)
+          if (Date.now() - progress.savedAt < 7200000) {
+            setCurrentStep(progress.currentStep);
+            setDeliveryForm(progress.deliveryForm);
+            if (progress.confirmedOrder) {
+              setConfirmedOrder(progress.confirmedOrder);
+            }
+            toast.success("✓ Checkout progress restored");
+          }
+        } catch (err) {
+          console.error("Error restoring checkout progress:", err);
+        }
+      }
+
       const cart = readCart();
       if (!cart.length) {
         router.push("/cart");
@@ -136,8 +185,8 @@ export default function CheckoutPage() {
     setDeliveryForm(address);
   }
 
-  // Proceed to payment
-  function proceedToPayment() {
+  // Proceed to review
+  function proceedToReview() {
     if (
       !deliveryForm.name ||
       !deliveryForm.email ||
@@ -156,7 +205,9 @@ export default function CheckoutPage() {
       handleSaveAddress();
     }
 
-    setCurrentStep("payment");
+    // Save progress before moving to review
+    saveCheckoutProgress();
+    setCurrentStep("review");
   }
 
   // Save address to profile
@@ -190,49 +241,13 @@ export default function CheckoutPage() {
     }
   }
 
-  // Handle receipt upload
-  async function handleReceiptUpload(file: File) {
-    if (!file.type.startsWith("image/")) {
-      toast.error("Please upload an image file");
-      return;
-    }
-
-    setUploadingReceipt(true);
-    try {
-      const fileName = `receipts/${Date.now()}_${file.name}`;
-      const { data, error } = await supabase.storage
-        .from("images")
-        .upload(fileName, file);
-
-      if (error) throw error;
-
-      const {
-        data: { publicUrl },
-      } = supabase.storage.from("images").getPublicUrl(fileName);
-
-      setReceiptUrl(publicUrl);
-      setReceiptFilename(file.name);
-      toast.success("Receipt uploaded successfully");
-    } catch (err) {
-      console.error("Upload error:", err);
-      toast.error("Failed to upload receipt");
-    } finally {
-      setUploadingReceipt(false);
-    }
-  }
-
-  // Place order
-  async function placeOrder() {
-    if (!receiptUrl) {
-      toast.error("Please upload a payment receipt");
-      return;
-    }
-
-    // Snapshot cart items before clearing
+  // Confirm order (creates order and generates reference number, then goes to payment)
+  async function confirmOrder() {
+    // Snapshot cart items
     const cartSnapshot = [...cartItems];
 
     setSubmitting(true);
-    const submittingToastId = toast.loading("Placing your order...");
+    const submittingToastId = toast.loading("Creating your order...");
 
     try {
       const response = await fetch("/api/orders", {
@@ -242,8 +257,8 @@ export default function CheckoutPage() {
         body: JSON.stringify({
           items: cartSnapshot,
           delivery_address: deliveryForm,
-          payment_slip_url: receiptUrl,
-          payment_slip_filename: receiptFilename,
+          payment_slip_url: "",  // No receipt yet
+          payment_slip_filename: "",
         }),
         signal: AbortSignal.timeout(10000), // 10 second timeout
       });
@@ -255,7 +270,7 @@ export default function CheckoutPage() {
       };
 
       if (!response.ok) {
-        throw new Error(data.message || "Failed to place order");
+        throw new Error(data.message || "Failed to create order");
       }
 
       // Calculate subtotal
@@ -264,31 +279,88 @@ export default function CheckoutPage() {
         0
       );
 
-      // Transition to confirmed view instead of navigating
-      setConfirmedOrder({
+      // Store confirmed order data and reference number
+      const newConfirmedOrder = {
         referenceNumber: data.reference_number || "",
         orderId: data.orderId || "",
         items: cartSnapshot,
         total: subtotal,
-      });
-      setCurrentStep("confirmed");
+      };
+      setConfirmedOrder(newConfirmedOrder);
+      setTempReferenceNumber(data.reference_number || "");
+
+      // Save progress with confirmed order before moving to payment
+      const progress: CheckoutProgress = {
+        currentStep: "payment",
+        deliveryForm,
+        confirmedOrder: newConfirmedOrder,
+        savedAt: Date.now(),
+      };
+      localStorage.setItem("kyro_checkout_progress", JSON.stringify(progress));
+      setProgressSaved(true);
+      setTimeout(() => setProgressSaved(false), 2000);
+
+      // Go to payment step
+      setCurrentStep("payment");
 
       // Dismiss loading toast and show success
       toast.dismiss(submittingToastId);
-      toast.success("Order placed successfully!");
+      toast.success("Order created! Now please make payment.");
 
-      // Clear cart after successful order
-      saveCart([]);
-      setCartItems([]);
     } catch (err) {
+      // Save form state before showing error (for error recovery)
+      saveCheckoutProgress();
       // Dismiss loading toast and show error
       toast.dismiss(submittingToastId);
       toast.error(
-        err instanceof Error ? err.message : "Failed to place order"
+        err instanceof Error ? err.message : "Failed to create order"
       );
     } finally {
       setSubmitting(false);
     }
+  }
+
+  // Complete order (user will send receipt via WhatsApp)
+  async function updateOrderWithReceipt() {
+    if (!confirmedOrder) {
+      toast.error("Order not found");
+      return;
+    }
+
+    setSubmitting(true);
+    const submittingToastId = toast.loading("Completing your order...");
+
+    try {
+      // Just clear cart and redirect - receipt will be sent via WhatsApp
+      saveCart([]);
+      setCartItems([]);
+
+      // Clear localStorage progress as order is completed
+      localStorage.removeItem("kyro_checkout_progress");
+
+      // Dismiss loading toast and show success
+      toast.dismiss(submittingToastId);
+      toast.success("Order completed! Please send receipt via WhatsApp. 🙏");
+
+      // Navigate to orders page after a short delay
+      setTimeout(() => {
+        router.push("/orders");
+      }, 1500);
+    } catch (err) {
+      // Dismiss loading toast and show error
+      toast.dismiss(submittingToastId);
+      toast.error(
+        err instanceof Error ? err.message : "Failed to complete order"
+      );
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  // Place order (deprecated - replaced by confirmOrder)
+  async function placeOrder() {
+    // This function is replaced by updateOrderWithReceipt
+    await updateOrderWithReceipt();
   }
 
   // Calculate totals
@@ -321,7 +393,7 @@ export default function CheckoutPage() {
           --kyro-line: rgba(23, 23, 23, 0.10);
 
           min-height: 100vh;
-          padding: 55px 24px 100px;
+          padding: 48px 20px 80px;
           color: var(--kyro-ink);
           background:
             radial-gradient(circle at 7% 8%, rgba(170,137,83,0.075), transparent 25%),
@@ -335,8 +407,15 @@ export default function CheckoutPage() {
         }
 
         .checkout-header {
-          margin-bottom: 40px;
+          margin-bottom: 28px;
           animation: kyroSlideUp 0.75s cubic-bezier(.2,.8,.2,1) both;
+          position: relative;
+        }
+
+        .checkout-heading {
+          display: flex;
+          align-items: center;
+          gap: 12px;
         }
 
         .checkout-heading h1 {
@@ -352,12 +431,28 @@ export default function CheckoutPage() {
           font-size: 13px;
         }
 
+        .secure-badge {
+          position: absolute;
+          top: 0;
+          right: 0;
+          background: rgba(170,137,83,0.1);
+          border: 1px solid rgba(170,137,83,0.3);
+          border-radius: 8px;
+          padding: 6px 12px;
+          font-size: 11px;
+          font-weight: 700;
+          color: var(--kyro-gold-dark);
+          display: flex;
+          align-items: center;
+          gap: 6px;
+        }
+
         /* Progress Indicator */
         .progress-indicator {
           display: flex;
           justify-content: space-between;
-          margin-bottom: 40px;
-          gap: 20px;
+          margin-bottom: 28px;
+          gap: 16px;
         }
 
         .progress-step {
@@ -410,18 +505,21 @@ export default function CheckoutPage() {
         /* Layout */
         .checkout-layout {
           display: grid;
-          grid-template-columns: 1fr 340px;
-          gap: 22px;
+          grid-template-columns: 1fr 360px;
+          gap: 20px;
           align-items: start;
+        }
+
+        @media (max-width: 1100px) {
+          .checkout-layout {
+            grid-template-columns: 1fr 320px;
+            gap: 18px;
+          }
         }
 
         @media (max-width: 768px) {
           .checkout-layout {
             grid-template-columns: 1fr;
-          }
-
-          .checkout-layout {
-            grid-template-columns: 1fr !important;
           }
 
           .checkout-summary {
@@ -495,11 +593,6 @@ export default function CheckoutPage() {
             line-height: 1.6;
           }
 
-          .upload-dropzone {
-            min-height: 100px;
-            padding: 16px;
-          }
-
           .review-item-image {
             width: 60px;
             height: 60px;
@@ -521,9 +614,15 @@ export default function CheckoutPage() {
             font-size: 16px;
             min-height: 44px;
           }
+
+          .secure-badge {
+            position: static;
+            margin-top: 12px;
+          }
         }
+
         .checkout-form-card {
-          padding: 32px;
+          padding: 24px;
           border: 1px solid var(--kyro-line);
           border-radius: 20px;
           background: rgba(255,254,250,0.9);
@@ -535,7 +634,7 @@ export default function CheckoutPage() {
           display: flex;
           align-items: center;
           gap: 12px;
-          margin-bottom: 24px;
+          margin-bottom: 18px;
           padding-bottom: 16px;
           border-bottom: 1px solid var(--kyro-line);
         }
@@ -557,6 +656,7 @@ export default function CheckoutPage() {
           margin: 0;
           font-size: 18px;
           color: var(--kyro-ink);
+          font-weight: 700;
         }
 
         /* Saved Addresses */
@@ -604,7 +704,7 @@ export default function CheckoutPage() {
         .form-row {
           display: grid;
           grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-          gap: 16px;
+          gap: 14px;
           margin-bottom: 16px;
         }
 
@@ -684,80 +784,9 @@ export default function CheckoutPage() {
           letter-spacing: 0.1em;
         }
 
-        /* Receipt Upload */
-        .receipt-upload {
-          margin-bottom: 24px;
-        }
-
-        .upload-label {
-          display: block;
-          margin-bottom: 8px;
-          font-size: 11px;
-          font-weight: 700;
-          color: var(--kyro-ink);
-          text-transform: uppercase;
-          letter-spacing: 0.1em;
-        }
-
-        .upload-dropzone {
-          position: relative;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          min-height: 120px;
-          padding: 20px;
-          border: 2px dashed var(--kyro-line);
-          border-radius: 12px;
-          background: var(--kyro-surface);
-          cursor: pointer;
-          transition: all 0.3s ease;
-        }
-
-        .upload-dropzone:hover {
-          border-color: rgba(170,137,83,0.3);
-          background: #fffefa;
-        }
-
-        .upload-dropzone.has-image {
-          border-style: solid;
-          border-width: 1px;
-          min-height: auto;
-        }
-
-        .upload-placeholder {
-          text-align: center;
-          color: var(--kyro-muted);
-          font-size: 12px;
-        }
-
-        .upload-placeholder strong {
-          display: block;
-          margin-bottom: 4px;
-          color: var(--kyro-ink);
-        }
-
-        .upload-input {
-          display: none;
-        }
-
-        .receipt-preview {
-          position: relative;
-          margin-top: 12px;
-          border-radius: 8px;
-          overflow: hidden;
-          max-width: 100%;
-          max-height: 200px;
-        }
-
-        .receipt-preview img {
-          width: 100%;
-          height: auto;
-          display: block;
-        }
-
         /* Order Review */
         .review-section {
-          margin-bottom: 24px;
+          margin-bottom: 18px;
         }
 
         .review-section-title {
@@ -776,7 +805,7 @@ export default function CheckoutPage() {
           padding: 12px;
           border: 1px solid var(--kyro-line);
           border-radius: 8px;
-          margin-bottom: 10px;
+          margin-bottom: 6px;
           background: var(--kyro-surface);
         }
 
@@ -860,7 +889,7 @@ export default function CheckoutPage() {
 
         .btn-primary,
         .btn-secondary {
-          padding: 13px 24px;
+          padding: 12px 20px;
           border: none;
           border-radius: 999px;
           font-size: 12px;
@@ -901,12 +930,14 @@ export default function CheckoutPage() {
         .checkout-summary {
           position: sticky;
           top: 95px;
-          padding: 24px;
+          padding: 22px;
           border: 1px solid var(--kyro-line);
           border-radius: 20px;
           background: linear-gradient(145deg, rgba(255,254,250,0.94), rgba(246,242,233,0.78));
           box-shadow: 0 15px 40px rgba(30,25,18,0.045);
           animation: kyroSlideUp 0.8s 0.2s cubic-bezier(.2,.8,.2,1) both;
+          max-height: 80vh;
+          overflow-y: auto;
         }
 
         .summary-title {
@@ -954,6 +985,35 @@ export default function CheckoutPage() {
           font-weight: 700;
           color: var(--kyro-gold);
           text-align: right;
+        }
+
+        /* Saved Progress Badge */
+        .save-indicator {
+          position: absolute;
+          bottom: 24px;
+          right: 24px;
+          background: rgba(76, 175, 80, 0.15);
+          border: 1px solid rgba(76, 175, 80, 0.4);
+          border-radius: 8px;
+          padding: 8px 12px;
+          font-size: 11px;
+          font-weight: 700;
+          color: #4caf50;
+          display: flex;
+          align-items: center;
+          gap: 6px;
+          animation: slideIn 0.3s ease-out;
+        }
+
+        @keyframes slideIn {
+          from {
+            opacity: 0;
+            transform: translateY(10px);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0);
+          }
         }
 
         /* Loading */
@@ -1016,11 +1076,6 @@ export default function CheckoutPage() {
             font-size: 10px;
           }
 
-          .upload-dropzone {
-            min-height: 80px;
-            padding: 12px;
-          }
-
           .bank-details {
             font-size: 10px;
             padding: 12px;
@@ -1078,11 +1133,6 @@ export default function CheckoutPage() {
             min-height: 40px;
           }
 
-          .upload-dropzone {
-            min-height: 70px;
-            padding: 10px;
-          }
-
           .bank-details {
             font-size: 9px;
             padding: 10px;
@@ -1119,36 +1169,50 @@ export default function CheckoutPage() {
         {/* Header */}
         <div className="checkout-header">
           <div className="checkout-heading">
-            <h1>Checkout</h1>
+            <h1>🔒 Checkout</h1>
             <p>Complete your order in just 3 steps</p>
           </div>
+          <div className="secure-badge">
+            🔒 Secure Checkout
+          </div>
+          {progressSaved && (
+            <div className="save-indicator">
+              ✓ Saved
+            </div>
+          )}
         </div>
 
         {/* Progress */}
         <div className="progress-indicator">
-          {(["delivery", "payment", "review", "confirmed"] as const).map((step, idx) => (
-            <div
-              key={step}
-              className={`progress-step ${
-                currentStep === step
-                  ? "active"
-                  : idx < (["delivery", "payment", "review", "confirmed"] as const).indexOf(currentStep)
-                  ? "completed"
-                  : ""
-              }`}
-            >
-              <div className="progress-circle">{idx + 1}</div>
-              <span className="progress-label">
-                {step === "delivery"
-                  ? "Delivery"
-                  : step === "payment"
-                  ? "Payment"
-                  : step === "review"
-                  ? "Review"
-                  : "Confirmed"}
-              </span>
-            </div>
-          ))}
+          {(["delivery", "review", "payment"] as const).map((step, idx) => {
+            const steps = ["delivery", "review", "payment"] as const;
+            const stepIndex = steps.indexOf(step);
+            const currentStepIndex = steps.indexOf(currentStep);
+            const isCompleted = stepIndex < currentStepIndex;
+            return (
+              <div
+                key={step}
+                className={`progress-step ${
+                  currentStep === step
+                    ? "active"
+                    : isCompleted
+                    ? "completed"
+                    : ""
+                }`}
+              >
+                <div className="progress-circle">
+                  {isCompleted ? "✓" : idx + 1}
+                </div>
+                <span className="progress-label">
+                  {step === "delivery"
+                    ? "Delivery"
+                    : step === "review"
+                    ? "Review"
+                    : "Payment"}
+                </span>
+              </div>
+            );
+          })}
         </div>
 
         {/* Main Layout */}
@@ -1307,24 +1371,112 @@ export default function CheckoutPage() {
                   </button>
                   <button
                     className="btn-primary"
-                    onClick={proceedToPayment}
+                    onClick={proceedToReview}
                   >
-                    Next: Payment
+                    Next: Review
                   </button>
                 </div>
               </div>
             )}
 
-            {/* Step 2: Payment */}
+            {/* Step 3: Payment */}
             {currentStep === "payment" && (
               <div className="checkout-form-card">
                 <div className="form-section-title">
-                  <div className="form-section-number">2</div>
-                  <h2>Payment Details</h2>
+                  <div className="form-section-number">3</div>
+                  <h2>🔒 Payment & Receipt</h2>
+                </div>
+
+                {/* Reference Number Section */}
+                <div style={{ 
+                  marginBottom: "24px", 
+                  padding: "16px", 
+                  background: "linear-gradient(135deg, rgba(170, 137, 83, 0.1), rgba(170, 137, 83, 0.05))",
+                  border: "2px solid #aa8953",
+                  borderRadius: "12px",
+                  textAlign: "center"
+                }}>
+                  <p style={{ margin: "0 0 8px", fontSize: "11px", color: "#806537", textTransform: "uppercase", fontWeight: 700, letterSpacing: "0.1em" }}>
+                    Your Reference Number
+                  </p>
+                  {confirmedOrder && (
+                    <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "12px", marginTop: "12px" }}>
+                      <p style={{
+                        margin: "0",
+                        fontSize: "42px",
+                        fontFamily: "Courier New, monospace",
+                        fontWeight: 700,
+                        color: "#aa8953",
+                        letterSpacing: "3px",
+                        flex: 1
+                      }}>
+                        {confirmedOrder.referenceNumber}
+                      </p>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          navigator.clipboard.writeText(confirmedOrder.referenceNumber);
+                          toast.success("Copied!");
+                        }}
+                        style={{
+                          background: "#aa8953",
+                          border: "none",
+                          borderRadius: "8px",
+                          width: "44px",
+                          height: "44px",
+                          cursor: "pointer",
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          fontSize: "20px",
+                          transition: "all 0.2s ease",
+                          flexShrink: 0
+                        }}
+                        onMouseEnter={(e) => (e.currentTarget.style.background = "#806537")}
+                        onMouseLeave={(e) => (e.currentTarget.style.background = "#aa8953")}
+                        title="Copy reference number"
+                      >
+                        📋
+                      </button>
+                    </div>
+                  )}
+                </div>
+
+                {/* Safe & Secure Badge */}
+                <div style={{
+                  marginBottom: "24px",
+                  padding: "12px 16px",
+                  background: "rgba(76, 175, 80, 0.08)",
+                  border: "1px solid rgba(76, 175, 80, 0.3)",
+                  borderRadius: "8px",
+                  fontSize: "12px",
+                  color: "#4caf50",
+                  fontWeight: 600,
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "8px"
+                }}>
+                  🔒 Your information is secure and encrypted
+                </div>
+
+                {/* Down Payment Notice */}
+                <div style={{
+                  marginBottom: "24px",
+                  padding: "14px 16px",
+                  background: "rgba(255, 165, 0, 0.08)",
+                  border: "1px solid rgba(255, 165, 0, 0.3)",
+                  borderRadius: "8px",
+                  fontSize: "13px",
+                  color: "#7a4f00"
+                }}>
+                  <strong style={{ display: "block", marginBottom: "6px" }}>⚠️ Down Payment Required: Rs.500.00/-</strong>
+                  <span style={{ fontSize: "12px", lineHeight: "1.5" }}>
+                    Please transfer Rs.500.00/- as a down payment to the bank account below before your order is processed.
+                  </span>
                 </div>
 
                 <div style={{ marginBottom: "24px" }}>
-                  <p style={{ margin: "0 0 12px", fontSize: "12px", color: "var(--kyro-muted)" }}>
+                  <p style={{ margin: "0 0 12px", fontSize: "12px", fontWeight: 700, color: "var(--kyro-muted)" }}>
                     Bank Transfer Instructions
                   </p>
                   <style>{`
@@ -1469,67 +1621,64 @@ export default function CheckoutPage() {
                   </div>
                 </div>
 
-                <div className="receipt-upload">
-                  <label className="upload-label">Upload Payment Receipt</label>
-                  <div
-                    className={`upload-dropzone ${
-                      receiptUrl ? "has-image" : ""
-                    }`}
-                    onClick={() =>
-                      document.getElementById("receipt-input")?.click()
+                {/* WhatsApp Button to Send Receipt */}
+                <button
+                  type="button"
+                  style={{
+                    width: "100%",
+                    height: "48px",
+                    background: "#25D366",
+                    color: "white",
+                    border: "none",
+                    borderRadius: "10px",
+                    fontSize: "13px",
+                    fontWeight: 600,
+                    cursor: "pointer",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    gap: "10px",
+                    marginBottom: "16px",
+                    transition: "all 0.3s ease",
+                    boxShadow: "0 4px 12px rgba(37, 211, 102, 0.3)"
+                  }}
+                  onClick={() => {
+                    if (!confirmedOrder) {
+                      toast.error("Order data not found");
+                      return;
                     }
-                  >
-                    {receiptUrl ? (
-                      <div style={{ width: "100%" }}>
-                        <p className="upload-placeholder">
-                          <strong>Receipt Uploaded</strong>
-                          {receiptFilename}
-                        </p>
-                        <img
-                          src={receiptUrl}
-                          alt="Receipt preview"
-                          style={{
-                            maxWidth: "100%",
-                            maxHeight: "150px",
-                            borderRadius: "6px",
-                            marginTop: "8px",
-                          }}
-                        />
-                      </div>
-                    ) : (
-                      <div className="upload-placeholder">
-                        <strong>Click to upload receipt</strong>
-                        or drag and drop
-                        <br />
-                        <small>(JPG, PNG)</small>
-                      </div>
-                    )}
-                  </div>
-                  <input
-                    id="receipt-input"
-                    className="upload-input"
-                    type="file"
-                    accept="image/*"
-                    onChange={(e) => {
-                      const file = e.target.files?.[0];
-                      if (file) handleReceiptUpload(file);
-                    }}
-                  />
-                </div>
+                    const message = `Hi Kyro! 🌸\nOrder Reference: ${confirmedOrder.referenceNumber}\n\nItems:\n${confirmedOrder.items
+                      .map((item) => `- ${item.quantity}x ${item.name}${item.category ? ` (${item.category})` : ""}${item.size ? ` - ${item.size}` : ""}`)
+                      .join("\n")}\n\nTotal: Rs.${confirmedOrder.total.toLocaleString("en-LK")}\nDown Payment: Rs.500 (to be paid)\nBalance Due: Rs.${(confirmedOrder.total - 500).toLocaleString("en-LK")}\n\nPlease confirm my order. 🙏`;
+                    const waUrl = `https://wa.me/94768644132?text=${encodeURIComponent(message)}`;
+                    window.open(waUrl, "_blank", "noopener,noreferrer");
+                  }}
+                  onMouseEnter={(e) => {
+                    (e.currentTarget as HTMLButtonElement).style.background = "#20BA5A";
+                    (e.currentTarget as HTMLButtonElement).style.transform = "translateY(-2px)";
+                  }}
+                  onMouseLeave={(e) => {
+                    (e.currentTarget as HTMLButtonElement).style.background = "#25D366";
+                    (e.currentTarget as HTMLButtonElement).style.transform = "translateY(0)";
+                  }}
+                >
+                  <FaWhatsapp size={18} />
+                  SEND RECEIPT VIA WHATSAPP
+                </button>
 
                 <div className="button-group">
                   <button
                     className="btn-secondary"
-                    onClick={() => setCurrentStep("delivery")}
+                    onClick={() => setCurrentStep("review")}
                   >
                     Back
                   </button>
                   <button
                     className="btn-primary"
-                    onClick={() => setCurrentStep("review")}
-                    disabled={!receiptUrl || uploadingReceipt}
+                    onClick={updateOrderWithReceipt}
+                    disabled={submitting}
                   >
-                    Next: Review
+                    {submitting ? "Completing Order..." : "Complete Order"}
                   </button>
                 </div>
               </div>
@@ -1539,7 +1688,7 @@ export default function CheckoutPage() {
             {currentStep === "review" && (
               <div className="checkout-form-card">
                 <div className="form-section-title">
-                  <div className="form-section-number">3</div>
+                  <div className="form-section-number">2</div>
                   <h2>Order Review</h2>
                 </div>
 
@@ -1600,309 +1749,40 @@ export default function CheckoutPage() {
                   </div>
                 </div>
 
-                <div className="review-section">
-                  <p className="review-section-title">Payment</p>
-                  <div
-                    style={{
-                      padding: "12px",
-                      border: "1px solid var(--kyro-line)",
-                      borderRadius: "8px",
-                      background: "var(--kyro-surface)",
-                      fontSize: "11px",
-                      color: "var(--kyro-muted)",
-                    }}
-                  >
-                    Receipt: {receiptFilename}
+                <div className="review-totals">
+                  <div className="total-row">
+                    <span>Subtotal:</span>
+                    <span>Rs {subtotal.toLocaleString("en-LK")}</span>
+                  </div>
+                  <div className="total-row">
+                    <span>Down Payment:</span>
+                    <span style={{ color: "#aa8953" }}>Rs 500.00</span>
+                  </div>
+                  <div className="total-row final">
+                    <span>Total:</span>
+                    <span>Rs {subtotal.toLocaleString("en-LK")}</span>
                   </div>
                 </div>
 
                 <div className="button-group">
                   <button
                     className="btn-secondary"
-                    onClick={() => setCurrentStep("payment")}
+                    onClick={() => setCurrentStep("delivery")}
                   >
                     Back
                   </button>
                   <button
                     className="btn-primary"
-                    onClick={placeOrder}
+                    onClick={confirmOrder}
                     disabled={submitting}
                   >
-                    {submitting ? "Placing Order..." : "Place Order"}
+                    {submitting ? "Creating Order..." : "Confirm Order"}
                   </button>
                 </div>
               </div>
             )}
 
-            {/* Step 4: Confirmed */}
-            {currentStep === "confirmed" && confirmedOrder && (
-              <div className="checkout-form-card">
-                <div style={{ textAlign: "center", marginBottom: "32px" }}>
-                  <div style={{ fontSize: "56px", marginBottom: "12px" }}>✅</div>
-                  <h2 style={{ margin: "0 0 8px", fontSize: "28px", color: "var(--kyro-ink)", fontFamily: "Georgia, serif", fontWeight: 600 }}>
-                    Order Confirmed!
-                  </h2>
-                  <p style={{ margin: "0", color: "var(--kyro-muted)", fontSize: "13px" }}>
-                    Your order has been successfully placed
-                  </p>
-                </div>
 
-                {/* Reference Number Section */}
-                <div style={{ 
-                  marginBottom: "24px", 
-                  padding: "20px", 
-                  background: "rgba(170, 137, 83, 0.08)",
-                  border: "2px solid #aa8953",
-                  borderRadius: "12px",
-                  textAlign: "center"
-                }}>
-                  <p style={{ margin: "0 0 8px", fontSize: "11px", color: "#806537", textTransform: "uppercase", fontWeight: 700, letterSpacing: "0.1em" }}>
-                    Your Reference Number
-                  </p>
-                  <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "12px", marginTop: "12px" }}>
-                    <p style={{ 
-                      margin: "0", 
-                      fontSize: "36px", 
-                      color: "#aa8953", 
-                      fontWeight: 700, 
-                      fontFamily: "Courier New, monospace",
-                      letterSpacing: "2px"
-                    }}>
-                      {confirmedOrder.referenceNumber}
-                    </p>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        navigator.clipboard.writeText(confirmedOrder.referenceNumber);
-                        toast.success("Copied!");
-                      }}
-                      style={{
-                        background: "#aa8953",
-                        border: "none",
-                        borderRadius: "8px",
-                        width: "40px",
-                        height: "40px",
-                        cursor: "pointer",
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        fontSize: "18px",
-                        transition: "all 0.2s ease",
-                        padding: "0",
-                      }}
-                      onMouseEnter={(e) => {
-                        (e.target as HTMLButtonElement).style.background = "#806537";
-                        (e.target as HTMLButtonElement).style.transform = "scale(1.05)";
-                      }}
-                      onMouseLeave={(e) => {
-                        (e.target as HTMLButtonElement).style.background = "#aa8953";
-                        (e.target as HTMLButtonElement).style.transform = "scale(1)";
-                      }}
-                      title="Copy reference number"
-                    >
-                      📋
-                    </button>
-                  </div>
-                </div>
-
-                {/* Down Payment Banner */}
-                <div style={{
-                  marginBottom: "24px",
-                  padding: "16px",
-                  background: "rgba(170, 137, 83, 0.08)",
-                  border: "2px solid #aa8953",
-                  borderRadius: "12px"
-                }}>
-                  <p style={{ margin: "0 0 8px", fontSize: "12px", fontWeight: 700, color: "#806537" }}>
-                    ⚠️ Down Payment Required
-                  </p>
-                  <p style={{ margin: "0", fontSize: "24px", fontWeight: 700, color: "#aa8953" }}>
-                    Rs.500.00/-
-                  </p>
-                  <p style={{ margin: "8px 0 0", fontSize: "12px", color: "var(--kyro-muted)" }}>
-                    Please transfer this amount to the bank account below as a down payment for your order.
-                  </p>
-                </div>
-
-                {/* Bank Details */}
-                <div style={{ marginBottom: "24px" }}>
-                  <p style={{ margin: "0 0 12px", fontSize: "11px", color: "#806537", textTransform: "uppercase", fontWeight: 700, letterSpacing: "0.1em" }}>
-                    Transfer To
-                  </p>
-                  <div style={{
-                    background: "linear-gradient(135deg, rgba(170, 137, 83, 0.12) 0%, rgba(170, 137, 83, 0.06) 100%)",
-                    border: "2px solid #aa8953",
-                    borderRadius: "8px",
-                    padding: "16px"
-                  }}>
-                    <div style={{ marginBottom: "8px", padding: "8px", background: "white", borderRadius: "6px", border: "1px solid rgba(170, 137, 83, 0.2)" }}>
-                      <small style={{ color: "#806537", fontWeight: 700, textTransform: "uppercase", fontSize: "10px", letterSpacing: "0.08em" }}>Bank:</small>
-                      <div style={{ fontWeight: 600, color: "#171717", fontFamily: "Courier New, monospace", fontSize: "13px" }}>Commercial Bank</div>
-                    </div>
-                    <div style={{ marginBottom: "8px", padding: "8px", background: "white", borderRadius: "6px", border: "1px solid rgba(170, 137, 83, 0.2)" }}>
-                      <small style={{ color: "#806537", fontWeight: 700, textTransform: "uppercase", fontSize: "10px", letterSpacing: "0.08em" }}>Account Number:</small>
-                      <div style={{ fontWeight: 600, color: "#171717", fontFamily: "Courier New, monospace", fontSize: "13px" }}>8029116122</div>
-                    </div>
-                    <div style={{ marginBottom: "8px", padding: "8px", background: "white", borderRadius: "6px", border: "1px solid rgba(170, 137, 83, 0.2)" }}>
-                      <small style={{ color: "#806537", fontWeight: 700, textTransform: "uppercase", fontSize: "10px", letterSpacing: "0.08em" }}>Account Name:</small>
-                      <div style={{ fontWeight: 600, color: "#171717", fontFamily: "Courier New, monospace", fontSize: "13px" }}>N.A.K.I Neththasingha</div>
-                    </div>
-                    <div style={{ padding: "8px", background: "white", borderRadius: "6px", border: "1px solid rgba(170, 137, 83, 0.2)" }}>
-                      <small style={{ color: "#806537", fontWeight: 700, textTransform: "uppercase", fontSize: "10px", letterSpacing: "0.08em" }}>Branch:</small>
-                      <div style={{ fontWeight: 600, color: "#171717", fontFamily: "Courier New, monospace", fontSize: "13px" }}>Narammala Branch</div>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Order Summary */}
-                <div style={{ marginBottom: "24px" }}>
-                  <p style={{ margin: "0 0 12px", fontSize: "11px", color: "#806537", textTransform: "uppercase", fontWeight: 700, letterSpacing: "0.1em" }}>
-                    Order Summary
-                  </p>
-                  {confirmedOrder.items.map((item) => (
-                    <div key={item.productId} style={{ 
-                      padding: "10px", 
-                      marginBottom: "6px", 
-                      background: "var(--kyro-surface)",
-                      border: "1px solid var(--kyro-line)",
-                      borderRadius: "6px",
-                      fontSize: "12px",
-                      display: "flex",
-                      justifyContent: "space-between",
-                      alignItems: "center"
-                    }}>
-                      <div>
-                        <div style={{ fontWeight: 600, color: "var(--kyro-ink)" }}>{item.name}</div>
-                        <div style={{ fontSize: "11px", color: "var(--kyro-muted)" }}>
-                          {item.quantity}x @ Rs {item.price.toLocaleString("en-LK")}
-                        </div>
-                      </div>
-                      <div style={{ fontWeight: 600, color: "var(--kyro-gold)" }}>
-                        Rs {(item.price * item.quantity).toLocaleString("en-LK")}
-                      </div>
-                    </div>
-                  ))}
-                  <div style={{
-                    padding: "12px",
-                    marginTop: "12px",
-                    background: "rgba(170, 137, 83, 0.05)",
-                    border: "1px solid rgba(170, 137, 83, 0.2)",
-                    borderRadius: "6px",
-                    display: "flex",
-                    justifyContent: "space-between",
-                    fontSize: "13px",
-                    fontWeight: 700
-                  }}>
-                    <span>Total:</span>
-                    <span style={{ color: "#aa8953" }}>Rs {confirmedOrder.total.toLocaleString("en-LK")}</span>
-                  </div>
-                  <div style={{
-                    padding: "12px",
-                    marginTop: "8px",
-                    background: "rgba(170, 137, 83, 0.05)",
-                    border: "1px solid rgba(170, 137, 83, 0.2)",
-                    borderRadius: "6px",
-                    display: "flex",
-                    justifyContent: "space-between",
-                    fontSize: "13px"
-                  }}>
-                    <span>Down Payment:</span>
-                    <span style={{ fontWeight: 600, color: "var(--kyro-ink)" }}>Rs 500.00</span>
-                  </div>
-                  <div style={{
-                    padding: "12px",
-                    marginTop: "8px",
-                    background: "rgba(170, 137, 83, 0.1)",
-                    border: "2px solid rgba(170, 137, 83, 0.3)",
-                    borderRadius: "6px",
-                    display: "flex",
-                    justifyContent: "space-between",
-                    fontSize: "13px",
-                    fontWeight: 700
-                  }}>
-                    <span>Balance Due:</span>
-                    <span style={{ color: "#aa8953" }}>Rs {(confirmedOrder.total - 500).toLocaleString("en-LK")}</span>
-                  </div>
-                </div>
-
-                {/* WhatsApp Button */}
-                <div style={{ marginBottom: "24px" }}>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      const message = `Hi Kyro! 🌸\nOrder Reference: ${confirmedOrder.referenceNumber}\n\nItems:\n${confirmedOrder.items
-                        .map((item) => `- ${item.quantity}x ${item.name}${item.category ? ` (${item.category})` : ""}${item.size ? ` - ${item.size}` : ""}`)
-                        .join("\n")}\n\nTotal: Rs.${confirmedOrder.total.toLocaleString("en-LK")}\nDown Payment: Rs.500 (to be paid)\nBalance Due: Rs.${(confirmedOrder.total - 500).toLocaleString("en-LK")}\n\nSending receipt via this chat. Please confirm! 🙏`;
-                      const waUrl = `https://wa.me/94768644132?text=${encodeURIComponent(message)}`;
-                      window.open(waUrl, "_blank", "noopener,noreferrer");
-                    }}
-                    style={{
-                      width: "100%",
-                      padding: "14px 20px",
-                      background: "#25D366",
-                      color: "white",
-                      border: "none",
-                      borderRadius: "8px",
-                      fontSize: "14px",
-                      fontWeight: 700,
-                      cursor: "pointer",
-                      transition: "all 0.3s ease",
-                      textTransform: "uppercase",
-                      letterSpacing: "0.1em",
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      gap: "8px"
-                    }}
-                    onMouseEnter={(e) => {
-                      (e.target as HTMLButtonElement).style.background = "#1ABF5E";
-                      (e.target as HTMLButtonElement).style.transform = "translateY(-2px)";
-                      (e.target as HTMLButtonElement).style.boxShadow = "0 8px 20px rgba(37, 211, 102, 0.3)";
-                    }}
-                    onMouseLeave={(e) => {
-                      (e.target as HTMLButtonElement).style.background = "#25D366";
-                      (e.target as HTMLButtonElement).style.transform = "translateY(0)";
-                      (e.target as HTMLButtonElement).style.boxShadow = "none";
-                    }}
-                  >
-                    <span style={{ fontSize: "18px" }}>💬</span>
-                    Send Receipt via WhatsApp
-                  </button>
-                </div>
-
-                {/* Home Button */}
-                <div>
-                  <button
-                    type="button"
-                    onClick={() => router.push("/")}
-                    style={{
-                      width: "100%",
-                      padding: "14px 20px",
-                      background: "var(--kyro-ink)",
-                      color: "white",
-                      border: "none",
-                      borderRadius: "8px",
-                      fontSize: "14px",
-                      fontWeight: 700,
-                      cursor: "pointer",
-                      transition: "all 0.3s ease",
-                      textTransform: "uppercase",
-                      letterSpacing: "0.1em"
-                    }}
-                    onMouseEnter={(e) => {
-                      (e.target as HTMLButtonElement).style.transform = "translateY(-2px)";
-                      (e.target as HTMLButtonElement).style.boxShadow = "0 10px 28px rgba(23,23,23,0.15)";
-                    }}
-                    onMouseLeave={(e) => {
-                      (e.target as HTMLButtonElement).style.transform = "translateY(0)";
-                      (e.target as HTMLButtonElement).style.boxShadow = "none";
-                    }}
-                  >
-                    Back to Home
-                  </button>
-                </div>
-              </div>
-            )}
           </div>
 
           {/* Summary Sidebar */}
