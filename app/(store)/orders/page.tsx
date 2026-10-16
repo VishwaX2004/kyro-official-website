@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import toast from "react-hot-toast";
+import { FaWhatsapp } from "react-icons/fa";
 
 type OrderItem = {
   name: string;
@@ -23,6 +24,7 @@ type OrderShipping = {
 
 type Order = {
   _id: string;
+  reference_number?: string;
   total: number;
   status: string;
   createdAt: string;
@@ -193,6 +195,7 @@ function OrderModal({
   onClose: () => void;
 }) {
   const closeButtonRef = useRef<HTMLButtonElement>(null);
+  const [copied, setCopied] = useState(false);
 
   useEffect(() => {
     if (closeButtonRef.current) {
@@ -240,6 +243,25 @@ function OrderModal({
                 {getStatusLabel(order.status)}
               </span>
             </div>
+            {order.reference_number && (
+              <div className="modal-ref-row">
+                <span className="modal-ref-label">REF</span>
+                <span className="modal-ref-value">{order.reference_number}</span>
+                <button
+                  type="button"
+                  className="modal-ref-copy"
+                  onClick={() => {
+                    navigator.clipboard.writeText(order.reference_number!);
+                    setCopied(true);
+                    toast.success('Reference copied!');
+                    setTimeout(() => setCopied(false), 2000);
+                  }}
+                  aria-label="Copy reference number"
+                >
+                  {copied ? '✓' : '⧉'}
+                </button>
+              </div>
+            )}
           </div>
           <button
             ref={closeButtonRef}
@@ -915,6 +937,30 @@ export default function OrdersPage() {
           color: white;
         }
 
+        .whatsapp-button {
+          display: inline-flex;
+          align-items: center;
+          gap: 8px;
+          padding: 10px 15px;
+          border: none;
+          border-radius: 999px;
+          background: #25D366;
+          color: white;
+          font-size: 11px;
+          font-weight: 800;
+          cursor: pointer;
+          transition:
+            background 0.25s ease,
+            transform 0.25s ease,
+            box-shadow 0.25s ease;
+        }
+
+        .whatsapp-button:hover {
+          transform: translateY(-2px);
+          background: #20BA5A;
+          box-shadow: 0 8px 20px rgba(37, 211, 102, 0.3);
+        }
+
         .arrow {
           transition: transform 0.25s ease;
         }
@@ -1017,6 +1063,12 @@ export default function OrdersPage() {
           color: var(--kyro-muted);
           font-size: 10px;
           line-height: 1.5;
+        }
+
+        @media (min-width: 769px) {
+          .timeline-copy span {
+            display: none;
+          }
         }
 
         .timeline-line {
@@ -1733,14 +1785,14 @@ export default function OrdersPage() {
         }
 
         .modal-body {
-          padding: 24px 28px;
+          padding: 18px 22px;
           display: flex;
           flex-direction: column;
-          gap: 24px;
+          gap: 16px;
         }
 
         .modal-section {
-          padding: 20px;
+          padding: 14px 16px;
           border: 1px solid rgba(23,23,23,0.07);
           border-radius: 18px;
           background: rgba(255,254,250,0.6);
@@ -1894,6 +1946,84 @@ export default function OrdersPage() {
         @keyframes modalIn {
           from { opacity: 0; transform: scale(0.92) translateY(20px); }
           to { opacity: 1; transform: scale(1) translateY(0); }
+        }
+
+        /* Reference number row in modal header */
+        .modal-ref-row {
+          display: inline-flex;
+          align-items: center;
+          gap: 8px;
+          margin-top: 10px;
+          padding: 6px 12px 6px 10px;
+          border-radius: 999px;
+          background: rgba(170, 137, 83, 0.1);
+          border: 1px solid rgba(170, 137, 83, 0.25);
+          width: fit-content;
+        }
+
+        .modal-ref-label {
+          font-size: 9px;
+          font-weight: 800;
+          letter-spacing: 0.2em;
+          color: var(--kyro-gold-dark);
+          text-transform: uppercase;
+        }
+
+        .modal-ref-value {
+          font-family: 'Courier New', Courier, monospace;
+          font-size: 15px;
+          font-weight: 700;
+          color: var(--kyro-gold);
+          letter-spacing: 0.08em;
+        }
+
+        .modal-ref-copy {
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          width: 26px;
+          height: 26px;
+          border: none;
+          border-radius: 50%;
+          background: var(--kyro-gold);
+          color: white;
+          font-size: 13px;
+          cursor: pointer;
+          transition: background 0.2s ease, transform 0.2s ease;
+          line-height: 1;
+        }
+
+        .modal-ref-copy:hover {
+          background: var(--kyro-gold-dark);
+          transform: scale(1.1);
+        }
+
+        /* Custom scrollbar for modal */
+        .modal-card {
+          scrollbar-width: thin;
+          scrollbar-color: var(--kyro-gold) rgba(170, 137, 83, 0.1);
+          scroll-behavior: smooth;
+        }
+
+        .modal-card::-webkit-scrollbar {
+          width: 8px;
+        }
+
+        .modal-card::-webkit-scrollbar-track {
+          background: rgba(239, 235, 225, 0.6);
+          border-radius: 0 28px 28px 0;
+        }
+
+        .modal-card::-webkit-scrollbar-thumb {
+          background: var(--kyro-gold);
+          border-radius: 4px;
+          border: 2px solid transparent;
+          background-clip: padding-box;
+        }
+
+        .modal-card::-webkit-scrollbar-thumb:hover {
+          background: var(--kyro-gold-dark);
+          background-clip: padding-box;
         }
 
         /* Modal mobile */
@@ -2077,15 +2207,52 @@ export default function OrdersPage() {
                         {getStatusDescription(order.status)}
                       </span>
 
-                      <button
-                        type="button"
-                        className="details-button"
-                        onClick={() =>
-                          openModal(order._id)
-                        }
-                      >
-                        View details
-                      </button>
+                      <div style={{ display: "flex", gap: "12px", alignItems: "center" }}>
+                        {order.reference_number && (
+                          <button
+                            type="button"
+                            className="whatsapp-button"
+                            onClick={() => {
+                              const downPayment = 500;
+                              const balance = order.total - downPayment;
+                              const itemLines = order.items
+                                .map((item) => `- ${item.quantity} x ${item.name}`)
+                                .join('\n');
+                              const refNum = order.reference_number ?? 'N/A';
+                              const message = [
+                                'Hi Kyro! 🌸',
+                                `Order Reference: ${refNum}`,
+                                '',
+                                'Items:',
+                                itemLines,
+                                '',
+                                `Total: Rs.${order.total.toLocaleString()}`,
+                                `Down Payment: Rs.${downPayment.toLocaleString()}`,
+                                `Balance: Rs.${balance.toLocaleString()}`,
+                                '',
+                                'Please confirm my order. 🙏',
+                              ].join('\n');
+                              window.open(
+                                `https://wa.me/94768644132?text=${encodeURIComponent(message)}`,
+                                '_blank'
+                              );
+                            }}
+                            title="Send Receipt via WhatsApp"
+                          >
+                            <FaWhatsapp size={16} />
+                            Send Receipt
+                          </button>
+                        )}
+                        <button
+                          type="button"
+                          className="details-button"
+                          onClick={() =>
+                            openModal(order._id)
+                          }
+                        >
+                          View details
+                        </button>
+                      </div>
                     </div>
                   </article>
                 );
