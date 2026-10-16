@@ -210,6 +210,16 @@ export async function POST(request: Request) {
       throw new Error("Order insertion failed");
     }
 
+    // Generate reference number using cumulative order count
+    const totalOrderCount = await db.collection("orders").countDocuments({});
+    const referenceNumber = `KYROID${String(totalOrderCount).padStart(6, "0")}`;
+
+    // Update the inserted order with reference_number
+    await db.collection("orders").updateOne(
+      { _id: result.insertedId },
+      { $set: { reference_number: referenceNumber } }
+    );
+
     // Rate limiting: check AFTER successful insert to ensure order was created
     const rateLimitResult = checkRateLimit(session.userId, 3, 60000);
     if (!rateLimitResult.allowed) {
@@ -222,6 +232,7 @@ export async function POST(request: Request) {
       {
         message: "Order placed successfully.",
         orderId: displayOrderId,
+        reference_number: referenceNumber,
       },
       { status: 201 }
     );
@@ -242,6 +253,7 @@ export async function POST(request: Request) {
               body: JSON.stringify({
                 order: {
                   displayOrderId,
+                  reference_number: referenceNumber,
                   createdAt: new Date().toISOString(),
                   items,
                   delivery_address: delivery_address || shipping,

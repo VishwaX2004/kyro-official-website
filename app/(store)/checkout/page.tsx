@@ -26,7 +26,7 @@ type User = {
   saved_addresses: SavedAddress[];
 };
 
-type CheckoutStep = "delivery" | "payment" | "review";
+type CheckoutStep = "delivery" | "payment" | "review" | "confirmed";
 
 export default function CheckoutPage() {
   const router = useRouter();
@@ -36,6 +36,14 @@ export default function CheckoutPage() {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
+
+  // Confirmed order state
+  const [confirmedOrder, setConfirmedOrder] = useState<{
+    referenceNumber: string;
+    orderId: string;
+    items: CartItem[];
+    total: number;
+  } | null>(null);
 
   // Delivery form state
   const [selectedAddressId, setSelectedAddressId] = useState<string>("");
@@ -223,9 +231,6 @@ export default function CheckoutPage() {
     // Snapshot cart items before clearing
     const cartSnapshot = [...cartItems];
 
-    // Optimistic UI: clear cart immediately before fetch
-    saveCart([]);
-    setCartItems([]);
     setSubmitting(true);
     const submittingToastId = toast.loading("Placing your order...");
 
@@ -246,25 +251,36 @@ export default function CheckoutPage() {
       const data = (await response.json()) as {
         message?: string;
         orderId?: string;
+        reference_number?: string;
       };
 
       if (!response.ok) {
         throw new Error(data.message || "Failed to place order");
       }
 
+      // Calculate subtotal
+      const subtotal = cartSnapshot.reduce(
+        (sum, item) => sum + item.price * item.quantity,
+        0
+      );
+
+      // Transition to confirmed view instead of navigating
+      setConfirmedOrder({
+        referenceNumber: data.reference_number || "",
+        orderId: data.orderId || "",
+        items: cartSnapshot,
+        total: subtotal,
+      });
+      setCurrentStep("confirmed");
+
       // Dismiss loading toast and show success
       toast.dismiss(submittingToastId);
-      toast.success(`Order ${data.orderId} placed successfully!`);
+      toast.success("Order placed successfully!");
 
-      // Navigate after short delay
-      setTimeout(() => {
-        router.push("/orders");
-      }, 1500);
+      // Clear cart after successful order
+      saveCart([]);
+      setCartItems([]);
     } catch (err) {
-      // Restore cart on error
-      saveCart(cartSnapshot);
-      setCartItems(cartSnapshot);
-
       // Dismiss loading toast and show error
       toast.dismiss(submittingToastId);
       toast.error(
@@ -1110,13 +1126,13 @@ export default function CheckoutPage() {
 
         {/* Progress */}
         <div className="progress-indicator">
-          {(["delivery", "payment", "review"] as const).map((step, idx) => (
+          {(["delivery", "payment", "review", "confirmed"] as const).map((step, idx) => (
             <div
               key={step}
               className={`progress-step ${
                 currentStep === step
                   ? "active"
-                  : idx < (["delivery", "payment", "review"] as const).indexOf(currentStep)
+                  : idx < (["delivery", "payment", "review", "confirmed"] as const).indexOf(currentStep)
                   ? "completed"
                   : ""
               }`}
@@ -1127,7 +1143,9 @@ export default function CheckoutPage() {
                   ? "Delivery"
                   : step === "payment"
                   ? "Payment"
-                  : "Review"}
+                  : step === "review"
+                  ? "Review"
+                  : "Confirmed"}
               </span>
             </div>
           ))}
@@ -1611,6 +1629,276 @@ export default function CheckoutPage() {
                     disabled={submitting}
                   >
                     {submitting ? "Placing Order..." : "Place Order"}
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* Step 4: Confirmed */}
+            {currentStep === "confirmed" && confirmedOrder && (
+              <div className="checkout-form-card">
+                <div style={{ textAlign: "center", marginBottom: "32px" }}>
+                  <div style={{ fontSize: "56px", marginBottom: "12px" }}>✅</div>
+                  <h2 style={{ margin: "0 0 8px", fontSize: "28px", color: "var(--kyro-ink)", fontFamily: "Georgia, serif", fontWeight: 600 }}>
+                    Order Confirmed!
+                  </h2>
+                  <p style={{ margin: "0", color: "var(--kyro-muted)", fontSize: "13px" }}>
+                    Your order has been successfully placed
+                  </p>
+                </div>
+
+                {/* Reference Number Section */}
+                <div style={{ 
+                  marginBottom: "24px", 
+                  padding: "20px", 
+                  background: "rgba(170, 137, 83, 0.08)",
+                  border: "2px solid #aa8953",
+                  borderRadius: "12px",
+                  textAlign: "center"
+                }}>
+                  <p style={{ margin: "0 0 8px", fontSize: "11px", color: "#806537", textTransform: "uppercase", fontWeight: 700, letterSpacing: "0.1em" }}>
+                    Your Reference Number
+                  </p>
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "12px", marginTop: "12px" }}>
+                    <p style={{ 
+                      margin: "0", 
+                      fontSize: "36px", 
+                      color: "#aa8953", 
+                      fontWeight: 700, 
+                      fontFamily: "Courier New, monospace",
+                      letterSpacing: "2px"
+                    }}>
+                      {confirmedOrder.referenceNumber}
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        navigator.clipboard.writeText(confirmedOrder.referenceNumber);
+                        toast.success("Copied!");
+                      }}
+                      style={{
+                        background: "#aa8953",
+                        border: "none",
+                        borderRadius: "8px",
+                        width: "40px",
+                        height: "40px",
+                        cursor: "pointer",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        fontSize: "18px",
+                        transition: "all 0.2s ease",
+                        padding: "0",
+                      }}
+                      onMouseEnter={(e) => {
+                        (e.target as HTMLButtonElement).style.background = "#806537";
+                        (e.target as HTMLButtonElement).style.transform = "scale(1.05)";
+                      }}
+                      onMouseLeave={(e) => {
+                        (e.target as HTMLButtonElement).style.background = "#aa8953";
+                        (e.target as HTMLButtonElement).style.transform = "scale(1)";
+                      }}
+                      title="Copy reference number"
+                    >
+                      📋
+                    </button>
+                  </div>
+                </div>
+
+                {/* Down Payment Banner */}
+                <div style={{
+                  marginBottom: "24px",
+                  padding: "16px",
+                  background: "rgba(170, 137, 83, 0.08)",
+                  border: "2px solid #aa8953",
+                  borderRadius: "12px"
+                }}>
+                  <p style={{ margin: "0 0 8px", fontSize: "12px", fontWeight: 700, color: "#806537" }}>
+                    ⚠️ Down Payment Required
+                  </p>
+                  <p style={{ margin: "0", fontSize: "24px", fontWeight: 700, color: "#aa8953" }}>
+                    Rs.500.00/-
+                  </p>
+                  <p style={{ margin: "8px 0 0", fontSize: "12px", color: "var(--kyro-muted)" }}>
+                    Please transfer this amount to the bank account below as a down payment for your order.
+                  </p>
+                </div>
+
+                {/* Bank Details */}
+                <div style={{ marginBottom: "24px" }}>
+                  <p style={{ margin: "0 0 12px", fontSize: "11px", color: "#806537", textTransform: "uppercase", fontWeight: 700, letterSpacing: "0.1em" }}>
+                    Transfer To
+                  </p>
+                  <div style={{
+                    background: "linear-gradient(135deg, rgba(170, 137, 83, 0.12) 0%, rgba(170, 137, 83, 0.06) 100%)",
+                    border: "2px solid #aa8953",
+                    borderRadius: "8px",
+                    padding: "16px"
+                  }}>
+                    <div style={{ marginBottom: "8px", padding: "8px", background: "white", borderRadius: "6px", border: "1px solid rgba(170, 137, 83, 0.2)" }}>
+                      <small style={{ color: "#806537", fontWeight: 700, textTransform: "uppercase", fontSize: "10px", letterSpacing: "0.08em" }}>Bank:</small>
+                      <div style={{ fontWeight: 600, color: "#171717", fontFamily: "Courier New, monospace", fontSize: "13px" }}>Commercial Bank</div>
+                    </div>
+                    <div style={{ marginBottom: "8px", padding: "8px", background: "white", borderRadius: "6px", border: "1px solid rgba(170, 137, 83, 0.2)" }}>
+                      <small style={{ color: "#806537", fontWeight: 700, textTransform: "uppercase", fontSize: "10px", letterSpacing: "0.08em" }}>Account Number:</small>
+                      <div style={{ fontWeight: 600, color: "#171717", fontFamily: "Courier New, monospace", fontSize: "13px" }}>8029116122</div>
+                    </div>
+                    <div style={{ marginBottom: "8px", padding: "8px", background: "white", borderRadius: "6px", border: "1px solid rgba(170, 137, 83, 0.2)" }}>
+                      <small style={{ color: "#806537", fontWeight: 700, textTransform: "uppercase", fontSize: "10px", letterSpacing: "0.08em" }}>Account Name:</small>
+                      <div style={{ fontWeight: 600, color: "#171717", fontFamily: "Courier New, monospace", fontSize: "13px" }}>N.A.K.I Neththasingha</div>
+                    </div>
+                    <div style={{ padding: "8px", background: "white", borderRadius: "6px", border: "1px solid rgba(170, 137, 83, 0.2)" }}>
+                      <small style={{ color: "#806537", fontWeight: 700, textTransform: "uppercase", fontSize: "10px", letterSpacing: "0.08em" }}>Branch:</small>
+                      <div style={{ fontWeight: 600, color: "#171717", fontFamily: "Courier New, monospace", fontSize: "13px" }}>Narammala Branch</div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Order Summary */}
+                <div style={{ marginBottom: "24px" }}>
+                  <p style={{ margin: "0 0 12px", fontSize: "11px", color: "#806537", textTransform: "uppercase", fontWeight: 700, letterSpacing: "0.1em" }}>
+                    Order Summary
+                  </p>
+                  {confirmedOrder.items.map((item) => (
+                    <div key={item.productId} style={{ 
+                      padding: "10px", 
+                      marginBottom: "6px", 
+                      background: "var(--kyro-surface)",
+                      border: "1px solid var(--kyro-line)",
+                      borderRadius: "6px",
+                      fontSize: "12px",
+                      display: "flex",
+                      justifyContent: "space-between",
+                      alignItems: "center"
+                    }}>
+                      <div>
+                        <div style={{ fontWeight: 600, color: "var(--kyro-ink)" }}>{item.name}</div>
+                        <div style={{ fontSize: "11px", color: "var(--kyro-muted)" }}>
+                          {item.quantity}x @ Rs {item.price.toLocaleString("en-LK")}
+                        </div>
+                      </div>
+                      <div style={{ fontWeight: 600, color: "var(--kyro-gold)" }}>
+                        Rs {(item.price * item.quantity).toLocaleString("en-LK")}
+                      </div>
+                    </div>
+                  ))}
+                  <div style={{
+                    padding: "12px",
+                    marginTop: "12px",
+                    background: "rgba(170, 137, 83, 0.05)",
+                    border: "1px solid rgba(170, 137, 83, 0.2)",
+                    borderRadius: "6px",
+                    display: "flex",
+                    justifyContent: "space-between",
+                    fontSize: "13px",
+                    fontWeight: 700
+                  }}>
+                    <span>Total:</span>
+                    <span style={{ color: "#aa8953" }}>Rs {confirmedOrder.total.toLocaleString("en-LK")}</span>
+                  </div>
+                  <div style={{
+                    padding: "12px",
+                    marginTop: "8px",
+                    background: "rgba(170, 137, 83, 0.05)",
+                    border: "1px solid rgba(170, 137, 83, 0.2)",
+                    borderRadius: "6px",
+                    display: "flex",
+                    justifyContent: "space-between",
+                    fontSize: "13px"
+                  }}>
+                    <span>Down Payment:</span>
+                    <span style={{ fontWeight: 600, color: "var(--kyro-ink)" }}>Rs 500.00</span>
+                  </div>
+                  <div style={{
+                    padding: "12px",
+                    marginTop: "8px",
+                    background: "rgba(170, 137, 83, 0.1)",
+                    border: "2px solid rgba(170, 137, 83, 0.3)",
+                    borderRadius: "6px",
+                    display: "flex",
+                    justifyContent: "space-between",
+                    fontSize: "13px",
+                    fontWeight: 700
+                  }}>
+                    <span>Balance Due:</span>
+                    <span style={{ color: "#aa8953" }}>Rs {(confirmedOrder.total - 500).toLocaleString("en-LK")}</span>
+                  </div>
+                </div>
+
+                {/* WhatsApp Button */}
+                <div style={{ marginBottom: "24px" }}>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const message = `Hi Kyro! 🌸\nOrder Reference: ${confirmedOrder.referenceNumber}\n\nItems:\n${confirmedOrder.items
+                        .map((item) => `- ${item.quantity}x ${item.name}${item.category ? ` (${item.category})` : ""}${item.size ? ` - ${item.size}` : ""}`)
+                        .join("\n")}\n\nTotal: Rs.${confirmedOrder.total.toLocaleString("en-LK")}\nDown Payment: Rs.500 (to be paid)\nBalance Due: Rs.${(confirmedOrder.total - 500).toLocaleString("en-LK")}\n\nSending receipt via this chat. Please confirm! 🙏`;
+                      const waUrl = `https://wa.me/94768644132?text=${encodeURIComponent(message)}`;
+                      window.open(waUrl, "_blank", "noopener,noreferrer");
+                    }}
+                    style={{
+                      width: "100%",
+                      padding: "14px 20px",
+                      background: "#25D366",
+                      color: "white",
+                      border: "none",
+                      borderRadius: "8px",
+                      fontSize: "14px",
+                      fontWeight: 700,
+                      cursor: "pointer",
+                      transition: "all 0.3s ease",
+                      textTransform: "uppercase",
+                      letterSpacing: "0.1em",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      gap: "8px"
+                    }}
+                    onMouseEnter={(e) => {
+                      (e.target as HTMLButtonElement).style.background = "#1ABF5E";
+                      (e.target as HTMLButtonElement).style.transform = "translateY(-2px)";
+                      (e.target as HTMLButtonElement).style.boxShadow = "0 8px 20px rgba(37, 211, 102, 0.3)";
+                    }}
+                    onMouseLeave={(e) => {
+                      (e.target as HTMLButtonElement).style.background = "#25D366";
+                      (e.target as HTMLButtonElement).style.transform = "translateY(0)";
+                      (e.target as HTMLButtonElement).style.boxShadow = "none";
+                    }}
+                  >
+                    <span style={{ fontSize: "18px" }}>💬</span>
+                    Send Receipt via WhatsApp
+                  </button>
+                </div>
+
+                {/* Home Button */}
+                <div>
+                  <button
+                    type="button"
+                    onClick={() => router.push("/")}
+                    style={{
+                      width: "100%",
+                      padding: "14px 20px",
+                      background: "var(--kyro-ink)",
+                      color: "white",
+                      border: "none",
+                      borderRadius: "8px",
+                      fontSize: "14px",
+                      fontWeight: 700,
+                      cursor: "pointer",
+                      transition: "all 0.3s ease",
+                      textTransform: "uppercase",
+                      letterSpacing: "0.1em"
+                    }}
+                    onMouseEnter={(e) => {
+                      (e.target as HTMLButtonElement).style.transform = "translateY(-2px)";
+                      (e.target as HTMLButtonElement).style.boxShadow = "0 10px 28px rgba(23,23,23,0.15)";
+                    }}
+                    onMouseLeave={(e) => {
+                      (e.target as HTMLButtonElement).style.transform = "translateY(0)";
+                      (e.target as HTMLButtonElement).style.boxShadow = "none";
+                    }}
+                  >
+                    Back to Home
                   </button>
                 </div>
               </div>

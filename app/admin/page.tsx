@@ -4211,6 +4211,7 @@ function Collection({
 
                 {isOrders && (
                   <>
+                    <th>Ref #</th>
                     <th>Order</th>
                     <th>Customer</th>
                     <th>Total</th>
@@ -4355,6 +4356,11 @@ function Collection({
 
                     {isOrders && (
                       <>
+                        <td className="td-ref">
+                          <small style={{ color: "#806537", fontFamily: "monospace", fontWeight: 600 }}>
+                            {(record as any).reference_number || "—"}
+                          </small>
+                        </td>
                         <td className="td-order">
                           <div className="order-id-cell">
                             <strong>#{orderNumber(record)}</strong>
@@ -4611,6 +4617,12 @@ function OrderDrawer({
             <h2 id="order-drawer-title" style={{ color: "white" }}>
               #{orderNumber(order)}
             </h2>
+
+            {(order as any).reference_number && (
+              <span style={{ color: "#aa8953", fontFamily: "monospace", fontSize: "14px", fontWeight: 600 }}>
+                {(order as any).reference_number}
+              </span>
+            )}
 
             <span className={`order-status ${currentStatus}`}>
               {currentStatus}

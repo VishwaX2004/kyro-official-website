@@ -15,6 +15,7 @@ export async function POST(request: Request) {
     const body = (await request.json()) as {
       order: {
         displayOrderId: string;
+        reference_number?: string;
         createdAt: string;
         items: Array<{
           productId: string;
@@ -22,6 +23,7 @@ export async function POST(request: Request) {
           price: number;
           quantity: number;
           size?: string;
+          category?: string;
           imageUrl?: string;
         }>;
         delivery_address?: {
@@ -116,6 +118,7 @@ export async function POST(request: Request) {
         <td style="padding: 12px; text-align: left;">
           ${item.imageUrl ? `<img src="cid:item-${item.productId}" style="width: 60px; height: 60px; border-radius: 6px; margin-right: 10px;" />` : ""}
           <strong>${item.name}</strong>
+          ${item.category ? `<br><small style="color: #806537; font-weight: 500;">${item.category}</small>` : ""}
           ${item.size ? `<br><small style="color: #777268;">${item.size}</small>` : ""}
         </td>
         <td style="padding: 12px; text-align: center;">${item.quantity}</td>
@@ -160,6 +163,22 @@ export async function POST(request: Request) {
                     <h2 style="margin: 0 0 12px; font-size: 22px; color: #171717; font-family: Georgia, serif;">Order Confirmed</h2>
                     <p style="margin: 0; color: #777268; font-size: 13px;">Hi ${order.delivery_address?.name?.split(" ")[0] || "Valued Customer"},</p>
                     <p style="margin: 12px 0 0; color: #777268; font-size: 13px;">Thank you for your purchase. We have received your order and will begin processing it shortly.</p>
+                  </td>
+                </tr>
+
+                <!-- Reference Number Banner -->
+                <tr>
+                  <td style="padding: 20px; background: linear-gradient(135deg, rgba(170,137,83,0.15), rgba(170,137,83,0.05)); border-left: 4px solid #aa8953; margin: 0 20px;">
+                    <p style="margin:0; font-size:11px; color:#806537; text-transform:uppercase; font-weight:700; letter-spacing:0.1em;">Reference Number</p>
+                    <p style="margin:6px 0 0; font-size:28px; color:#aa8953; font-weight:700; font-family:Georgia,serif; letter-spacing:0.05em;">${order.reference_number || order.displayOrderId}</p>
+                  </td>
+                </tr>
+
+                <!-- Down Payment Notice -->
+                <tr>
+                  <td style="padding:12px 20px; background:rgba(255,165,0,0.08); border:1px solid rgba(255,165,0,0.3); border-radius:6px; margin:0 20px; font-size:13px; color:#7a4f00;">
+                    <strong>⚠️ Down Payment Required: Rs.500.00/-</strong><br>
+                    <span style="font-size:12px;">Please transfer Rs.500.00/- as a down payment to the bank account below before your order is processed.</span>
                   </td>
                 </tr>
 
@@ -320,6 +339,22 @@ export async function POST(request: Request) {
                         </td>
                       </tr>
                     </table>
+                  </td>
+                </tr>
+
+                <!-- Reference Number Banner -->
+                <tr>
+                  <td style="padding: 20px; background: linear-gradient(135deg, rgba(170,137,83,0.15), rgba(170,137,83,0.05)); border-left: 4px solid #aa8953; margin: 0 20px;">
+                    <p style="margin:0; font-size:11px; color:#806537; text-transform:uppercase; font-weight:700; letter-spacing:0.1em;">Reference Number</p>
+                    <p style="margin:6px 0 0; font-size:28px; color:#aa8953; font-weight:700; font-family:Georgia,serif; letter-spacing:0.05em;">${order.reference_number || order.displayOrderId}</p>
+                  </td>
+                </tr>
+
+                <!-- Down Payment Notice -->
+                <tr>
+                  <td style="padding:12px 20px; background:rgba(255,165,0,0.08); border:1px solid rgba(255,165,0,0.3); border-radius:6px; margin:0 20px; font-size:13px; color:#7a4f00;">
+                    <strong>⚠️ Down Payment Required: Rs.500.00/-</strong><br>
+                    <span style="font-size:12px;">Reference: ${order.reference_number || order.displayOrderId}</span>
                   </td>
                 </tr>
 
