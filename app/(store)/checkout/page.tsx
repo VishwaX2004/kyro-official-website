@@ -96,9 +96,27 @@ export default function CheckoutPage() {
   // Load cart and user on mount, and restore progress if available
   useEffect(() => {
     async function init() {
+      // Check if coming from orders page with order data
+      const checkoutOrderStr = sessionStorage.getItem("checkout_order");
+      let orderFromSession = null;
+      
+      if (checkoutOrderStr) {
+        try {
+          orderFromSession = JSON.parse(checkoutOrderStr) as {
+            orderId: string;
+            referenceNumber: string;
+            items: CartItem[];
+            total: number;
+          };
+          sessionStorage.removeItem("checkout_order"); // Clear after reading
+        } catch (err) {
+          console.error("Error parsing checkout order:", err);
+        }
+      }
+
       // Check for saved progress first
       const savedProgress = localStorage.getItem("kyro_checkout_progress");
-      if (savedProgress) {
+      if (savedProgress && !orderFromSession) {
         try {
           const progress = JSON.parse(savedProgress) as CheckoutProgress;
           // Check if saved data is within 2 hours (7200000ms)
@@ -113,6 +131,21 @@ export default function CheckoutPage() {
         } catch (err) {
           console.error("Error restoring checkout progress:", err);
         }
+      }
+
+      // If coming from orders page, set payment step directly
+      if (orderFromSession) {
+        setCurrentStep("payment");
+        setConfirmedOrder({
+          orderId: orderFromSession.orderId,
+          referenceNumber: orderFromSession.referenceNumber,
+          items: orderFromSession.items,
+          total: orderFromSession.total,
+        });
+        setCartItems(orderFromSession.items);
+        setLoading(false);
+        toast.success("Order loaded. Ready to send receipt via WhatsApp.");
+        return;
       }
 
       const cart = readCart();
@@ -518,17 +551,31 @@ export default function CheckoutPage() {
         }
 
         @media (max-width: 768px) {
+          .kyro-checkout-page {
+            padding: 32px 16px 80px;
+          }
+
+          .checkout-container {
+            width: 100%;
+          }
+
           .checkout-layout {
             grid-template-columns: 1fr;
+            gap: 24px;
           }
 
           .checkout-summary {
             position: static;
             top: auto;
+            width: 100%;
+            max-height: none;
+            overflow-y: visible;
+            margin-top: 24px;
           }
 
           .checkout-form-card {
             padding: 20px;
+            border-radius: 16px;
           }
 
           .saved-addresses-list {
@@ -536,8 +583,13 @@ export default function CheckoutPage() {
           }
 
           .review-item {
-            grid-template-columns: 60px 1fr;
+            grid-template-columns: 70px 1fr;
             gap: 12px;
+          }
+
+          .review-item-image {
+            width: 70px;
+            height: 70px;
           }
 
           .review-item-price {
@@ -547,12 +599,26 @@ export default function CheckoutPage() {
           }
 
           .progress-indicator {
-            flex-direction: column;
-            gap: 12px;
+            flex-direction: row;
+            gap: 8px;
+            margin-bottom: 20px;
           }
 
           .progress-step {
-            gap: 10px;
+            gap: 6px;
+            flex: 1;
+          }
+
+          .progress-circle {
+            width: 36px;
+            height: 36px;
+            min-width: 36px;
+            font-size: 11px;
+          }
+
+          .progress-label {
+            font-size: 9px;
+            display: none;
           }
 
           .form-row {
@@ -574,28 +640,27 @@ export default function CheckoutPage() {
           .button-group button {
             flex: 1;
             width: 100%;
-            min-height: 44px;
+            min-height: 48px;
           }
 
           .btn-primary,
           .btn-secondary {
-            min-height: 44px;
+            min-height: 48px;
             padding: 12px 16px;
             font-size: 11px;
           }
 
           .checkout-heading h1 {
-            font-size: 2rem;
+            font-size: clamp(1.5rem, 6vw, 2rem);
+          }
+
+          .form-section-title h2 {
+            font-size: clamp(14px, 4vw, 18px);
           }
 
           .bank-details {
             font-size: 11px;
             line-height: 1.6;
-          }
-
-          .review-item-image {
-            width: 60px;
-            height: 60px;
           }
 
           .form-label {
@@ -604,6 +669,11 @@ export default function CheckoutPage() {
 
           .form-field {
             margin-bottom: 0;
+          }
+
+          .form-section-title {
+            margin-bottom: 16px;
+            padding-bottom: 12px;
           }
 
           input[type="text"],
@@ -618,6 +688,82 @@ export default function CheckoutPage() {
           .secure-badge {
             position: static;
             margin-top: 12px;
+            width: 100%;
+            justify-content: center;
+          }
+
+          .bank-details-container {
+            background: linear-gradient(135deg, rgba(170, 137, 83, 0.15) 0%, rgba(170, 137, 83, 0.08) 100%);
+            border: 2px solid #aa8953;
+            border-radius: 12px;
+            padding: 12px;
+            margin-top: 8px;
+          }
+
+          .bank-detail-row {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 8px;
+            margin-bottom: 12px;
+            padding: 12px;
+            background: white;
+            border-radius: 8px;
+            border: 1px solid rgba(170, 137, 83, 0.2);
+          }
+
+          .bank-label {
+            min-width: 100%;
+            font-weight: 700;
+            color: #806537;
+            font-size: 10px;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+          }
+
+          .bank-value {
+            flex: 1;
+            width: 100%;
+            font-weight: 700;
+            color: #171717;
+            font-size: 11px;
+            padding: 10px 12px;
+            background: #fffefa;
+            border-radius: 6px;
+            user-select: all;
+            cursor: pointer;
+            transition: all 0.2s ease;
+          }
+
+          .copy-btn {
+            background: #aa8953;
+            border: none;
+            border-radius: 6px;
+            width: 44px;
+            height: 44px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+            transition: all 0.2s ease;
+            padding: 0;
+            flex-shrink: 0;
+            align-self: flex-end;
+          }
+
+          .summary-title {
+            font-size: 13px;
+          }
+
+          .summary-item {
+            font-size: 11px;
+          }
+
+          .save-indicator {
+            position: static;
+            margin-top: 12px;
+            display: inline-flex;
           }
         }
 
@@ -1050,35 +1196,54 @@ export default function CheckoutPage() {
         }
 
         @media (max-width: 480px) {
+          .kyro-checkout-page {
+            padding: 24px 14px 80px;
+          }
+
           .checkout-form-card {
             padding: 16px;
-            border-radius: 16px;
+            border-radius: 14px;
+            box-shadow: 0 10px 30px rgba(30,25,18,0.04);
           }
 
           .checkout-heading h1 {
-            font-size: 1.5rem;
+            font-size: clamp(1.3rem, 5vw, 1.5rem);
+          }
+
+          .form-section-title h2 {
+            font-size: clamp(13px, 4vw, 16px);
           }
 
           .progress-circle {
-            width: 36px;
-            height: 36px;
-            font-size: 12px;
+            width: 32px;
+            height: 32px;
+            font-size: 10px;
           }
 
           .form-input {
             font-size: 16px;
             padding: 11px 12px;
+            min-height: 44px;
           }
 
           .btn-primary,
           .btn-secondary {
             padding: 11px 14px;
             font-size: 10px;
+            min-height: 48px;
           }
 
           .bank-details {
             font-size: 10px;
             padding: 12px;
+          }
+
+          .bank-label {
+            font-size: 9px;
+          }
+
+          .bank-value {
+            font-size: 10px;
           }
 
           .checkout-summary {
@@ -1089,48 +1254,80 @@ export default function CheckoutPage() {
             font-size: 12px;
           }
 
+          .bank-details-container {
+            padding: 10px;
+          }
+
+          .bank-detail-row {
+            padding: 10px;
+            margin-bottom: 10px;
+          }
+
+          .save-indicator {
+            position: static;
+            margin-top: 10px;
+            bottom: auto;
+            right: auto;
+            font-size: 10px;
+            padding: 6px 10px;
+          }
+
           input[type="text"],
           input[type="number"],
           input[type="email"],
           input[type="tel"],
           textarea {
             font-size: 16px;
-            min-height: 40px;
+            min-height: 44px;
           }
         }
 
         @media (max-width: 375px) {
+          .kyro-checkout-page {
+            padding: 20px 12px 70px;
+          }
+
           .checkout-form-card {
-            padding: 14px;
-            border-radius: 14px;
+            padding: 12px;
+            border-radius: 12px;
           }
 
           .checkout-heading h1 {
-            font-size: 1.3rem;
+            font-size: clamp(1.2rem, 5vw, 1.3rem);
+          }
+
+          .form-section-title h2 {
+            font-size: clamp(12px, 3vw, 14px);
+          }
+
+          .form-section-number {
+            width: 28px;
+            height: 28px;
+            font-size: 12px;
           }
 
           .progress-circle {
-            width: 32px;
-            height: 32px;
-            font-size: 10px;
+            width: 30px;
+            height: 30px;
+            font-size: 9px;
           }
 
           .saved-addresses-list {
             grid-template-columns: 1fr;
-            gap: 10px;
+            gap: 8px;
           }
 
           .form-input {
             font-size: 16px;
-            padding: 10px 11px;
-            min-height: 40px;
+            padding: 10px 10px;
+            min-height: 44px;
           }
 
           .btn-primary,
           .btn-secondary {
             padding: 10px 12px;
             font-size: 9px;
-            min-height: 40px;
+            min-height: 44px;
           }
 
           .bank-details {
@@ -1138,18 +1335,65 @@ export default function CheckoutPage() {
             padding: 10px;
           }
 
+          .bank-label {
+            font-size: 8px;
+            min-width: 90px;
+          }
+
+          .bank-value {
+            font-size: 9px;
+            padding: 8px 10px;
+          }
+
+          .copy-btn {
+            width: 40px;
+            height: 40px;
+            font-size: 14px;
+          }
+
           .checkout-summary {
-            padding: 14px;
+            padding: 12px;
+          }
+
+          .summary-title {
+            font-size: 11px;
+          }
+
+          .bank-details-container {
+            padding: 8px;
+          }
+
+          .bank-detail-row {
+            padding: 8px;
+            margin-bottom: 8px;
+            gap: 6px;
           }
 
           .review-item-image {
-            width: 50px;
-            height: 50px;
+            width: 60px;
+            height: 60px;
           }
 
           .review-item {
-            grid-template-columns: 50px 1fr;
-            gap: 10px;
+            grid-template-columns: 60px 1fr;
+            gap: 8px;
+            padding: 10px;
+          }
+
+          .form-label {
+            font-size: 9px;
+          }
+
+          .address-card {
+            padding: 12px;
+          }
+
+          .address-card-name {
+            font-size: 11px;
+          }
+
+          .address-card-details {
+            font-size: 10px;
           }
 
           input[type="text"],
@@ -1158,7 +1402,7 @@ export default function CheckoutPage() {
           input[type="tel"],
           textarea {
             font-size: 16px;
-            min-height: 40px;
+            min-height: 44px;
           }
         }
       `,
@@ -1400,15 +1644,16 @@ export default function CheckoutPage() {
                     Your Reference Number
                   </p>
                   {confirmedOrder && (
-                    <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "12px", marginTop: "12px" }}>
+                    <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "12px", marginTop: "12px", flexWrap: "wrap" }}>
                       <p style={{
                         margin: "0",
-                        fontSize: "42px",
+                        fontSize: "clamp(20px, 6vw, 42px)",
                         fontFamily: "Courier New, monospace",
                         fontWeight: 700,
                         color: "#aa8953",
                         letterSpacing: "3px",
-                        flex: 1
+                        flex: "1 1 100%",
+                        minWidth: "200px"
                       }}>
                         {confirmedOrder.referenceNumber}
                       </p>
@@ -1422,6 +1667,8 @@ export default function CheckoutPage() {
                           background: "#aa8953",
                           border: "none",
                           borderRadius: "8px",
+                          minWidth: "44px",
+                          minHeight: "44px",
                           width: "44px",
                           height: "44px",
                           cursor: "pointer",
@@ -1460,19 +1707,26 @@ export default function CheckoutPage() {
                 </div>
 
                 {/* Down Payment Notice */}
+                {/* Combined Payment Instructions */}
                 <div style={{
                   marginBottom: "24px",
-                  padding: "14px 16px",
-                  background: "rgba(255, 165, 0, 0.08)",
-                  border: "1px solid rgba(255, 165, 0, 0.3)",
-                  borderRadius: "8px",
+                  padding: "16px",
+                  background: "rgba(170, 137, 83, 0.08)",
+                  border: "2px solid #aa8953",
+                  borderRadius: "12px",
                   fontSize: "13px",
                   color: "#7a4f00"
                 }}>
-                  <strong style={{ display: "block", marginBottom: "6px" }}>⚠️ Down Payment Required: Rs.500.00/-</strong>
-                  <span style={{ fontSize: "12px", lineHeight: "1.5" }}>
+                  <strong style={{ display: "block", marginBottom: "10px", fontSize: "14px" }}>⚠️ Down Payment Required: Rs.500.00/-</strong>
+                  <span style={{ display: "block", fontSize: "12px", lineHeight: "1.6", marginBottom: "12px" }}>
                     Please transfer Rs.500.00/- as a down payment to the bank account below before your order is processed.
                   </span>
+                  <div style={{ borderTop: "1px solid rgba(170, 137, 83, 0.2)", paddingTop: "12px", marginTop: "12px" }}>
+                    <strong style={{ display: "block", marginBottom: "6px", fontSize: "13px" }}>💡 Important: Add Reference Number to Receipt</strong>
+                    <span style={{ fontSize: "12px", lineHeight: "1.6" }}>
+                      When sending your payment receipt via WhatsApp, please mention your order reference number: <strong style={{ fontFamily: "monospace", fontWeight: 700 }}>{confirmedOrder?.referenceNumber}</strong>
+                    </span>
+                  </div>
                 </div>
 
                 <div style={{ marginBottom: "24px" }}>
@@ -1514,10 +1768,9 @@ export default function CheckoutPage() {
                     
                     .bank-value {
                       flex: 1;
-                      font-family: 'Courier New', monospace;
-                      font-weight: 600;
+                      font-weight: 700;
                       color: #171717;
-                      font-size: 13px;
+                      font-size: 11px;
                       padding: 8px 12px;
                       background: #fffefa;
                       border-radius: 6px;
