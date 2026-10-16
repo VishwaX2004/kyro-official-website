@@ -210,9 +210,9 @@ export async function POST(request: Request) {
       throw new Error("Order insertion failed");
     }
 
-    // Generate reference number using cumulative order count
+    // Generate reference number using cumulative order count (KYRO001 format)
     const totalOrderCount = await db.collection("orders").countDocuments({});
-    const referenceNumber = `KYROID${String(totalOrderCount).padStart(6, "0")}`;
+    const referenceNumber = `KYRO${String(totalOrderCount).padStart(3, "0")}`;
 
     // Update the inserted order with reference_number
     await db.collection("orders").updateOne(

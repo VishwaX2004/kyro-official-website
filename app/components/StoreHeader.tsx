@@ -722,12 +722,13 @@ export default function StoreHeader() {
               <Link
                 href="/cart"
                 className="
-                  group flex items-center gap-2 py-2
+                  group relative flex items-center gap-2 py-2
                   text-[10px] font-bold tracking-[0.22em] text-black/80
                   transition-colors duration-200 hover:text-black
                 "
               >
                 <span>CART</span>
+                <span className="absolute bottom-0 left-1/2 h-[1px] w-0 -translate-x-1/2 bg-[#aa8953] transition-all duration-300 group-hover:w-full" />
                 <span
                   className={`
                     flex h-[18px] min-w-[18px] items-center justify-center
